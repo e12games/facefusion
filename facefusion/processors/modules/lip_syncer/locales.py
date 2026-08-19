@@ -1,0 +1,31 @@
+from facefusion.types import Locales
+
+LOCALES : Locales =\
+{
+	'en':
+	{
+		'help':
+		{
+			'model': 'choose the model responsible for syncing the lips',
+			'weight': 'specify the degree of weight applied to the lips'
+		},
+		'uis':
+		{
+			'model_dropdown': 'LIP SYNCER MODEL',
+			'weight_slider': 'LIP SYNCER WEIGHT'
+		}
+	},
+	'zh':
+	{
+		'help':
+		{
+			'model': '选择口型同步模型',
+			'weight': '指定口型同步权重'
+		},
+		'uis':
+		{
+			'model_dropdown': '口型同步模型',
+			'weight_slider': '口型同步权重'
+		}
+	}
+}
