@@ -11,24 +11,22 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import ttk
 
-from lianhuan_client import TIMEOUT, api_base
+from lianhuan_client import TIMEOUT, api_base, http_request
 
 
 def post_json(path : str, payload : dict | None = None) -> tuple[int, dict]:
 	url = api_base() + path
 	data = None if payload is None else json.dumps(payload).encode('utf-8')
-	request = urllib.request.Request(url, data = data, method = 'POST' if payload is not None else 'GET')
-	if payload is not None:
-		request.add_header('Content-Type', 'application/json')
 	try:
-		with urllib.request.urlopen(request, timeout = TIMEOUT) as response:
+		with http_request(url, data = data, method = 'POST' if payload is not None else 'GET') as response:
 			body = json.loads(response.read().decode('utf-8'))
 			return response.status, body
 	except urllib.error.HTTPError as error:
 		try:
 			body = json.loads(error.read().decode('utf-8'))
 		except Exception:
-			body = {'ok': False, 'reason': '服务器返回错误。'}
+			reason = '服务器拒绝访问。' if error.code == 403 else '服务器返回错误。'
+			body = {'ok': False, 'reason': reason}
 		return error.code, body
 	except Exception:
 		return 0, {'ok': False, 'reason': '连不上服务器。付费和试用都需要联网。'}
@@ -36,9 +34,8 @@ def post_json(path : str, payload : dict | None = None) -> tuple[int, dict]:
 
 def get_json(path : str) -> tuple[int, dict]:
 	url = api_base() + path
-	request = urllib.request.Request(url, method = 'GET')
 	try:
-		with urllib.request.urlopen(request, timeout = TIMEOUT) as response:
+		with http_request(url) as response:
 			body = json.loads(response.read().decode('utf-8'))
 			return response.status, body
 	except Exception:

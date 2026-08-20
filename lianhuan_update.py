@@ -7,7 +7,6 @@ import hashlib
 import json
 import shutil
 import sys
-import urllib.request
 from pathlib import Path
 
 from lianhuan_client import (
@@ -15,6 +14,7 @@ from lianhuan_client import (
 	api_base,
 	app_dir,
 	fetch_json,
+	http_request,
 	package_root,
 	read_local_version,
 	update_dir,
@@ -80,8 +80,7 @@ def ask_update(latest : str, notes : str) -> bool:
 
 def download_file(url : str, dest : Path) -> None:
 	dest.parent.mkdir(parents = True, exist_ok = True)
-	request = urllib.request.Request(url, method = 'GET')
-	with urllib.request.urlopen(request, timeout = TIMEOUT) as response, dest.open('wb') as handle:
+	with http_request(url) as response, dest.open('wb') as handle:
 		shutil.copyfileobj(response, handle)
 
 
