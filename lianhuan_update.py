@@ -119,7 +119,6 @@ def apply_manifest(manifest : dict, app_path : Path, work_dir : Path) -> None:
 	backup_root = work_dir / 'backup' / version
 	staging_root = work_dir / 'staging' / version
 	pending_root = work_dir / 'pending' / version
-	base = api_base().rstrip('/')
 
 	for folder in (backup_root, staging_root, pending_root):
 		if folder.exists():
