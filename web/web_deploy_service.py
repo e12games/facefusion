@@ -13,6 +13,7 @@ APP_ROOT = Path(os.environ.get('LIANHUAN_APP_ROOT', str(WEB_ROOT.parent)))
 LOG_PATH = WEB_ROOT / 'data' / 'web_update.log'
 LOCK_PATH = WEB_ROOT / 'data' / 'web_update.lock'
 UPDATE_SCRIPT = APP_ROOT / 'deploy' / 'web-self-update.sh'
+GIT_SCRIPT = APP_ROOT / 'deploy' / 'web-git.sh'
 BRANCH = os.environ.get('LIANHUAN_BRANCH', 'main')
 
 
@@ -34,15 +35,38 @@ def is_deploy_environment() -> bool:
 	return (APP_ROOT / '.git').is_dir()
 
 
+def git_env() -> dict[str, str]:
+	env = os.environ.copy()
+	env['GIT_TERMINAL_PROMPT'] = '0'
+	return env
+
+
 def run_git(args : list[str], timeout : int = 120) -> tuple[int, str]:
+	if not GIT_SCRIPT.is_file():
+		return 1, f'未找到 {GIT_SCRIPT}'
 	result = subprocess.run(
-		['git', '-C', str(APP_ROOT), *args],
+		['sudo', '-n', '-E', '/bin/bash', str(GIT_SCRIPT), *args],
 		capture_output = True,
 		text = True,
-		timeout = timeout
+		timeout = timeout,
+		env = git_env()
 	)
 	output = (result.stdout or '') + (result.stderr or '')
 	return result.returncode, output.strip()
+
+
+def git_fetch() -> tuple[bool, str]:
+	if not GIT_SCRIPT.is_file():
+		return False, f'未找到 {GIT_SCRIPT}'
+	result = subprocess.run(
+		['sudo', '-n', '-E', '/bin/bash', str(GIT_SCRIPT), '_fetch', BRANCH],
+		capture_output = True,
+		text = True,
+		timeout = 120,
+		env = git_env()
+	)
+	output = (result.stdout or '') + (result.stderr or '')
+	return result.returncode == 0, output.strip()
 
 
 def git_status(fetch : bool = True) -> dict[str, Any]:
@@ -58,11 +82,10 @@ def git_status(fetch : bool = True) -> dict[str, Any]:
 	fetch_ok = True
 	fetch_detail = ''
 	if fetch:
-		fetch_code, fetch_detail = run_git(['fetch', 'origin', BRANCH])
-		fetch_ok = fetch_code == 0
+		fetch_ok, fetch_detail = git_fetch()
 	_, remote_out = run_git(['rev-parse', '--short', f'origin/{BRANCH}'])
 	local = local_out.strip() or '?'
-	remote = remote_out.strip() or '?'
+	remote = remote_out.strip() if fetch_ok else '?'
 	branch = branch_out.strip() or BRANCH
 	update_available = fetch_ok and local != '?' and remote != '?' and local != remote
 	return {
@@ -75,7 +98,8 @@ def git_status(fetch : bool = True) -> dict[str, Any]:
 		'update_available': update_available,
 		'fetch_ok': fetch_ok,
 		'fetch_detail': fetch_detail,
-		'locked': LOCK_PATH.is_file()
+		'locked': LOCK_PATH.is_file(),
+		'has_github_token': bool(os.environ.get('GITHUB_TOKEN', '').strip())
 	}
 
 
@@ -84,7 +108,10 @@ def check_web_update() -> dict[str, Any]:
 	if not status.get('ok'):
 		return status
 	if not status.get('fetch_ok'):
-		status['message'] = f"无法连接 Git 远程：{status.get('fetch_detail') or 'fetch 失败'}"
+		hint = '请在 VPS 执行一次：sudo bash /opt/lianhuan/app/deploy/fix-web-git-sudo.sh'
+		if not status.get('has_github_token'):
+			hint += '；私有仓库还需在 /etc/lianhuan.env 设置 GITHUB_TOKEN'
+		status['message'] = f"无法连接 Git 远程：{status.get('fetch_detail') or 'fetch 失败'}。{hint}"
 		return status
 	if status.get('update_available'):
 		status['message'] = (
@@ -105,16 +132,18 @@ def apply_web_update() -> dict[str, Any]:
 		return {'ok': False, 'reason': f'未找到更新脚本：{UPDATE_SCRIPT}'}
 	status = git_status(fetch = True)
 	if not status.get('fetch_ok'):
-		return {'ok': False, 'reason': status.get('fetch_detail') or 'git fetch 失败'}
+		hint = '请先执行 deploy/fix-web-git-sudo.sh 配置 sudo；私有库需 GITHUB_TOKEN。'
+		return {'ok': False, 'reason': (status.get('fetch_detail') or 'git fetch 失败') + ' ' + hint}
 	try:
 		LOCK_PATH.write_text('1', encoding = 'utf-8')
 		append_log('apply: start web-self-update.sh')
 		subprocess.Popen(
-			['/bin/bash', str(UPDATE_SCRIPT)],
+			['sudo', '-n', '-E', '/bin/bash', str(UPDATE_SCRIPT)],
 			cwd = str(APP_ROOT),
 			stdout = subprocess.DEVNULL,
 			stderr = subprocess.DEVNULL,
-			start_new_session = True
+			start_new_session = True,
+			env = git_env()
 		)
 		msg = '已开始从 GitHub 拉取并重启 WEB 服务，约 10–30 秒中断。请稍后刷新本页。'
 		if status.get('update_available'):

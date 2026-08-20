@@ -62,6 +62,14 @@ exec /opt/lianhuan/venv/bin/uvicorn app:app --host 127.0.0.1 --port "$PORT" --pr
 EOF
 chmod +x "$APP/deploy/start.sh"
 chmod +x "$APP/deploy/web-self-update.sh" 2>/dev/null || true
+chmod +x "$APP/deploy/web-git.sh" 2>/dev/null || true
+
+log "WEB 在线更新 sudo 权限"
+cat >/etc/sudoers.d/lianhuan-web-update <<EOF
+www-data ALL=(root) NOPASSWD: /bin/bash ${APP}/deploy/web-git.sh
+www-data ALL=(root) NOPASSWD: /bin/bash ${APP}/deploy/web-self-update.sh
+EOF
+chmod 440 /etc/sudoers.d/lianhuan-web-update
 
 log "写入 systemd：$SERVICE"
 cat > "/etc/systemd/system/${SERVICE}.service" << EOF

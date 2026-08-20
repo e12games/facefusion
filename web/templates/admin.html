@@ -32,6 +32,7 @@
 		<button class="btn" type="submit">拉取并重启 WEB</button>
 	</form>
 	<p class="hint">等价于 VPS 执行 git pull + pip install + systemctl restart。</p>
+	<p class="hint">若检查失败，SSH 执行一次：<code>sudo bash {{ web_git.app_root }}/deploy/fix-web-git-sudo.sh</code>；私有仓库还需在 <code>/etc/lianhuan.env</code> 设 <code>GITHUB_TOKEN</code>。</p>
 	{% if web_update_log %}
 	<pre class="log-box">{{ web_update_log }}</pre>
 	{% endif %}
