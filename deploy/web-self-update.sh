@@ -10,6 +10,7 @@ BRANCH="${LIANHUAN_BRANCH:-main}"
 LOG="${WEB}/data/web_update.log"
 LOCK="${WEB}/data/web_update.lock"
 GIT="$APP/deploy/web-git.sh"
+ENV_FILE="${LIANHUAN_ENV_FILE:-/etc/lianhuan.env}"
 
 mkdir -p "${WEB}/data"
 exec >>"$LOG" 2>&1
@@ -25,10 +26,18 @@ if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
 	exit 1
 fi
 
+export HOME=/root
 export GIT_TERMINAL_PROMPT=0
+if [[ -f "$ENV_FILE" ]]; then
+	set -a
+	# shellcheck disable=SC1090
+	source "$ENV_FILE"
+	set +a
+fi
+
 cd "$APP"
 "$GIT" _fetch "$BRANCH"
-"$GIT" pull --ff-only origin "$BRANCH"
+"$GIT" _pull "$BRANCH"
 "$VENV/bin/pip" install -r "$WEB/requirements.txt" -q
 chown -R www-data:www-data "$WEB/data" "${LIANHUAN_RELEASES_DIR:-/opt/lianhuan/releases}" 2>/dev/null || true
 echo "pull ok, scheduling service restart"

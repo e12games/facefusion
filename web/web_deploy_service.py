@@ -119,7 +119,10 @@ def check_web_update() -> dict[str, Any]:
 		return status
 	if not status.get('fetch_ok'):
 		hint = '请在 VPS 执行：sudo bash /opt/lianhuan/app/deploy/fix-web-git-sudo.sh'
-		status['message'] = f"无法连接 Git 远程：{status.get('fetch_detail') or 'fetch 失败'}。{hint}"
+		detail = str(status.get('fetch_detail') or 'fetch 失败')
+		if 'Username' in detail or 'Authentication' in detail or '403' in detail or '401' in detail:
+			hint = '主仓若为私有：在 /etc/lianhuan.env 添加 GITHUB_TOKEN=你的PAT，然后 systemctl restart lianhuan-web'
+		status['message'] = f"无法连接 Git 远程：{detail}。{hint}"
 		return status
 	if status.get('update_available'):
 		status['message'] = (
