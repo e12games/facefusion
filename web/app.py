@@ -518,6 +518,20 @@ def admin_web_update_apply(request : Request):
 	return RedirectResponse('/admin', status_code = 303)
 
 
+@app.post('/admin/web-update/unlock')
+def admin_web_update_unlock(request : Request):
+	user = current_user(request)
+	if not user or not user['is_admin']:
+		return RedirectResponse('/login', status_code = 303)
+	from web_deploy_service import LOCK_PATH
+	if LOCK_PATH.is_file():
+		LOCK_PATH.unlink(missing_ok = True)
+		request.session['admin_flash'] = '已清除更新锁，可重新「拉取并重启 WEB」。'
+	else:
+		request.session['admin_flash'] = '当前没有更新锁。'
+	return RedirectResponse('/admin', status_code = 303)
+
+
 @app.post('/admin/trial')
 def admin_trial(request : Request, trial_enabled : Optional[str] = Form(None)):
 	user = current_user(request)

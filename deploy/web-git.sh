@@ -63,14 +63,16 @@ fi
 
 if [[ "${1:-}" == "_pull" ]]; then
 	branch="${2:-main}"
+	# 先 fetch 再 ff-only merge，避免 “Cannot fast-forward to multiple branches”
 	if [[ -n "${GITHUB_TOKEN:-}" ]]; then
 		url="$(auth_remote_url)"
-		git pull --ff-only "$url" "$branch"
+		git fetch "$url" "+refs/heads/${branch}:refs/remotes/origin/${branch}"
 	else
-		if ! git pull --ff-only origin "$branch"; then
-			echo "git pull 失败。若主仓为私有，请在 /etc/lianhuan.env 设置 GITHUB_TOKEN" >&2
-			exit 1
-		fi
+		git fetch origin "$branch"
+	fi
+	if ! git merge --ff-only "origin/${branch}"; then
+		echo "git merge --ff-only 失败。可先在 VPS 手动：cd $APP && git reset --hard origin/${branch}" >&2
+		exit 1
 	fi
 	exit 0
 fi

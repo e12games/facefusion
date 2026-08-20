@@ -172,6 +172,25 @@ input[type="email"]:focus, input[type="password"]:focus {
 	white-space: pre-wrap;
 	word-break: break-all;
 }
+.version-board { margin: 16px 0 28px; }
+.version-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 12px;
+	margin-top: 10px;
+}
+.version-card {
+	padding: 14px 16px;
+	border: 1px solid var(--line);
+	background: rgba(255,255,255,0.03);
+	border-radius: 6px;
+}
+.version-num {
+	font-size: 26px;
+	font-weight: 700;
+	margin: 6px 0 8px;
+	letter-spacing: 0.02em;
+}
 .mono { font-size: 12px; word-break: break-all; max-width: 160px; }
 
 .admin form.inline-form input[type="number"] { width: 4em; margin-right: 6px; }

@@ -86,6 +86,9 @@ def git_status(fetch : bool = True) -> dict[str, Any]:
 		}
 	_, branch_out = run_git_local(['rev-parse', '--abbrev-ref', 'HEAD'])
 	_, local_out = run_git_local(['rev-parse', '--short', 'HEAD'])
+	_, local_full = run_git_local(['rev-parse', 'HEAD'])
+	_, subject_out = run_git_local(['log', '-1', '--pretty=%s'])
+	_, date_out = run_git_local(['log', '-1', '--pretty=%ci'])
 	fetch_ok = True
 	fetch_detail = ''
 	if fetch:
@@ -104,6 +107,9 @@ def git_status(fetch : bool = True) -> dict[str, Any]:
 		'app_root': str(APP_ROOT),
 		'branch': branch,
 		'local_commit': local,
+		'local_commit_full': (local_full.strip() or '')[:40],
+		'local_subject': subject_out.strip()[:120] if subject_out else '',
+		'local_date': date_out.strip()[:19] if date_out else '',
 		'remote_commit': remote,
 		'update_available': update_available,
 		'fetch_ok': fetch_ok,

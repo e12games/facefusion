@@ -16,12 +16,43 @@
 
 	{% if message %}<p class="ok">{{ message }}</p>{% endif %}
 
+	<div class="version-board">
+		<h2>当前版本</h2>
+		<div class="version-grid">
+			<div class="version-card">
+				<p class="eyebrow">WEB 服务</p>
+				<p class="version-num">{{ web_git.local_commit or '—' }}</p>
+				<p class="hint">分支 {{ web_git.branch or 'main' }}
+					{% if web_git.remote_commit %} · 远程 {{ web_git.remote_commit }}{% endif %}
+					{% if web_git.update_available %} · <strong>可更新</strong>{% elif web_git.deployable %} · 已同步{% endif %}
+				</p>
+				{% if web_git.local_subject %}<p class="hint">{{ web_git.local_subject }}</p>{% endif %}
+				{% if web_git.local_date %}<p class="hint">提交时间 {{ web_git.local_date }}</p>{% endif %}
+			</div>
+			<div class="version-card">
+				<p class="eyebrow">客户端推荐版本</p>
+				<p class="version-num">{{ app_version }}</p>
+				<p class="hint">客户端启动时对比此版本
+					{% if update_enabled %} · 在线更新已开{% else %} · 在线更新已关{% endif %}
+				</p>
+			</div>
+			<div class="version-card">
+				<p class="eyebrow">公开仓发布包</p>
+				<p class="version-num">{{ releases_git.remote_version or '—' }}</p>
+				<p class="hint">facefusion-releases
+					{% if releases_git.cloned %} · 本地缓存 {{ releases_git.local_version }}{% endif %}
+				</p>
+			</div>
+		</div>
+	</div>
+
 	<h2>WEB 在线更新</h2>
 	{% if web_git.deployable %}
 	<p class="hint">
 		部署目录：<code>{{ web_git.app_root }}</code><br>
-		当前 commit：<strong>{{ web_git.local_commit }}</strong> ·
-		远程 <strong>{{ web_git.remote_commit }}</strong>（{{ web_git.branch }}）
+		当前版本：<strong>{{ web_git.local_commit }}</strong>
+		{% if web_git.local_date %}（{{ web_git.local_date }}）{% endif %}
+		· 远程 <strong>{{ web_git.remote_commit }}</strong>（{{ web_git.branch }}）
 		{% if web_git.update_available %} · <strong>有新版本</strong>{% else %} · 已同步{% endif %}
 		{% if web_git.locked %} · <strong>更新进行中</strong>{% endif %}
 	</p>
@@ -31,6 +62,11 @@
 	<form method="post" action="/admin/web-update/apply" style="display:inline;margin-left:8px" onsubmit="return confirm('将从 GitHub 拉取最新代码并重启 WEB 服务（约 10–30 秒中断）。继续？');">
 		<button class="btn" type="submit">拉取并重启 WEB</button>
 	</form>
+	{% if web_git.locked %}
+	<form method="post" action="/admin/web-update/unlock" style="display:inline;margin-left:8px" onsubmit="return confirm('确认清除卡住的更新锁？');">
+		<button class="btn" type="submit">清除更新锁</button>
+	</form>
+	{% endif %}
 	<p class="hint">等价于 VPS 执行 git pull + pip install + systemctl restart。</p>
 	<p class="hint">若检查失败，SSH 执行：<code>sudo bash {{ web_git.app_root }}/deploy/fix-web-git-sudo.sh</code>。主仓私有时在 <code>/etc/lianhuan.env</code> 设 <code>GITHUB_TOKEN</code> 后重启服务。</p>
 	{% if web_update_log %}
