@@ -107,6 +107,10 @@ def init_db() -> None:
 			)
 		except sqlite3.OperationalError:
 			pass
+		try:
+			connection.execute('ALTER TABLE users ADD COLUMN free_uses_remaining INTEGER NOT NULL DEFAULT 0')
+		except sqlite3.OperationalError:
+			pass
 		if connection.execute('SELECT 1 FROM settings WHERE key = ?', ('trial_enabled',)).fetchone() is None:
 			connection.execute('INSERT INTO settings(key, value) VALUES (?, ?)', ('trial_enabled', '1'))
 		defaults = {
@@ -115,7 +119,11 @@ def init_db() -> None:
 			'update_enabled': '1',
 			'usdt_trc20_wallet': '',
 			'membership_price_usdt': '20',
-			'admin_password_changed': '0'
+			'admin_password_changed': '0',
+			'register_code_required': '0',
+			'register_code': '',
+			'new_user_free_uses': '3',
+			'legacy_free_uses_granted': '0'
 		}
 		for key, value in defaults.items():
 			if connection.execute('SELECT 1 FROM settings WHERE key = ?', (key,)).fetchone() is None:
@@ -123,10 +131,64 @@ def init_db() -> None:
 		admin = connection.execute('SELECT id FROM users WHERE email = ?', (ADMIN_EMAIL,)).fetchone()
 		if admin is None:
 			connection.execute(
-				'INSERT INTO users(email, password_hash, is_admin, is_paid, created_at) VALUES (?, ?, 1, 1, ?)',
+				'INSERT INTO users(email, password_hash, is_admin, is_paid, free_uses_remaining, created_at) VALUES (?, ?, 1, 1, 0, ?)',
 				(ADMIN_EMAIL, hash_password(ADMIN_PASSWORD), utc_now())
 			)
+		if connection.execute('SELECT 1 FROM settings WHERE key = ?', ('legacy_free_uses_granted',)).fetchone() is None:
+			connection.execute('INSERT INTO settings(key, value) VALUES (?, ?)', ('legacy_free_uses_granted', '0'))
+		if setting_in_connection(connection, 'legacy_free_uses_granted', '0') != '1':
+			grant = parse_free_uses(setting_in_connection(connection, 'new_user_free_uses', '3'))
+			connection.execute(
+				'UPDATE users SET free_uses_remaining = ? WHERE is_admin = 0 AND is_paid = 0 AND free_uses_remaining = 0',
+				(grant,)
+			)
+			connection.execute(
+				'INSERT INTO settings(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+				('legacy_free_uses_granted', '1')
+			)
 		connection.commit()
+
+
+def setting_in_connection(connection : sqlite3.Connection, key : str, fallback : str = '') -> str:
+	row = connection.execute('SELECT value FROM settings WHERE key = ?', (key,)).fetchone()
+	return row['value'] if row else fallback
+
+
+def parse_free_uses(value : str) -> int:
+	try:
+		count = int(str(value or '').strip())
+	except Exception:
+		count = 3
+	return max(0, min(count, 999))
+
+
+def new_user_free_uses() -> int:
+	return parse_free_uses(setting('new_user_free_uses', '3'))
+
+
+def register_code_required() -> bool:
+	return setting('register_code_required', '0') == '1'
+
+
+def validate_register_code(code : str) -> bool:
+	expected = setting('register_code', '').strip()
+	if not expected:
+		return False
+	return code.strip() == expected
+
+
+def consume_free_use(user_id : int) -> int:
+	with closing(get_db()) as connection:
+		row = connection.execute(
+			'SELECT free_uses_remaining FROM users WHERE id = ? AND is_admin = 0 AND is_paid = 0',
+			(user_id,)
+		).fetchone()
+		if not row or int(row['free_uses_remaining'] or 0) <= 0:
+			return 0
+		remaining = int(row['free_uses_remaining']) - 1
+		connection.execute('UPDATE users SET free_uses_remaining = ? WHERE id = ?', (remaining, user_id))
+		connection.commit()
+		return remaining
 
 
 def needs_password_hint() -> bool:
@@ -206,11 +268,21 @@ def home(request : Request):
 def register_page(request : Request):
 	if current_user(request):
 		return RedirectResponse('/', status_code = 303)
-	return render(request, 'register.html', {'error': ''})
+	return render(request, 'register.html', {
+		'error': '',
+		'register_code_required': register_code_required(),
+		'new_user_free_uses': new_user_free_uses()
+	})
 
 
 @app.post('/register')
-def register(request : Request, email : str = Form(...), password : str = Form(...), password2 : str = Form(...)):
+def register(
+	request : Request,
+	email : str = Form(...),
+	password : str = Form(...),
+	password2 : str = Form(...),
+	register_code : str = Form('')
+):
 	email = email.strip().lower()
 	error = ''
 	if '@' not in email or '.' not in email:
@@ -221,12 +293,25 @@ def register(request : Request, email : str = Form(...), password : str = Form(.
 		error = '两次密码不一致。'
 	elif get_user_by_email(email):
 		error = '该邮箱已注册。'
+	elif register_code_required():
+		if not setting('register_code', '').strip():
+			error = '注册暂未开放，请联系管理员。'
+		elif not register_code.strip():
+			error = '请填写注册码。'
+		elif not validate_register_code(register_code):
+			error = '注册码不正确。'
 	if error:
-		return render(request, 'register.html', {'error': error, 'email': email})
+		return render(request, 'register.html', {
+			'error': error,
+			'email': email,
+			'register_code_required': register_code_required(),
+			'new_user_free_uses': new_user_free_uses()
+		})
+	grant = new_user_free_uses()
 	with closing(get_db()) as connection:
 		connection.execute(
-			'INSERT INTO users(email, password_hash, is_admin, is_paid, created_at) VALUES (?, ?, 0, 0, ?)',
-			(email, hash_password(password), utc_now())
+			'INSERT INTO users(email, password_hash, is_admin, is_paid, free_uses_remaining, created_at) VALUES (?, ?, 0, 0, ?, ?)',
+			(email, hash_password(password), grant, utc_now())
 		)
 		connection.commit()
 	request.session['email'] = email
@@ -281,7 +366,8 @@ def buy_page(request : Request):
 		'orders': orders,
 		'error': '',
 		'message': '',
-		'support_telegram': SUPPORT_TELEGRAM
+		'support_telegram': SUPPORT_TELEGRAM,
+		'free_uses_remaining': int(user.get('free_uses_remaining') or 0)
 	})
 
 
@@ -339,7 +425,8 @@ def buy_submit(request : Request, tx_hash : str = Form(...)):
 		'orders': orders,
 		'error': error,
 		'message': message,
-		'support_telegram': SUPPORT_TELEGRAM
+		'support_telegram': SUPPORT_TELEGRAM,
+		'free_uses_remaining': int(user.get('free_uses_remaining') or 0)
 	})
 
 
@@ -349,7 +436,9 @@ def admin_page(request : Request):
 	if not user or not user['is_admin']:
 		return RedirectResponse('/login', status_code = 303)
 	with closing(get_db()) as connection:
-		users = [ dict(row) for row in connection.execute('SELECT id, email, is_admin, is_paid, created_at FROM users ORDER BY id DESC').fetchall() ]
+		users = [ dict(row) for row in connection.execute(
+			'SELECT id, email, is_admin, is_paid, free_uses_remaining, created_at FROM users ORDER BY id DESC'
+		).fetchall() ]
 	manifest = load_manifest()
 	with closing(get_db()) as connection:
 		pending_orders = [
@@ -366,6 +455,10 @@ def admin_page(request : Request):
 		'app_version': setting('app_version', default_version()),
 		'release_notes': setting('release_notes', ''),
 		'update_enabled': setting('update_enabled', '1') == '1',
+		'trial_enabled': setting('trial_enabled') == '1',
+		'register_code_required': register_code_required(),
+		'register_code': setting('register_code', ''),
+		'new_user_free_uses': setting('new_user_free_uses', '3'),
 		'manifest_version': manifest.get('version', ''),
 		'manifest_files': len(manifest.get('files') or []),
 		'usdt_trc20_wallet': setting('usdt_trc20_wallet', ''),
@@ -380,6 +473,37 @@ def admin_trial(request : Request, trial_enabled : Optional[str] = Form(None)):
 	if not user or not user['is_admin']:
 		return RedirectResponse('/login', status_code = 303)
 	set_setting('trial_enabled', '1' if trial_enabled else '0')
+	return RedirectResponse('/admin', status_code = 303)
+
+
+@app.post('/admin/register')
+def admin_register_settings(
+	request : Request,
+	register_code_required_flag : Optional[str] = Form(None),
+	register_code : str = Form(''),
+	new_user_free_uses : str = Form('3')
+):
+	user = current_user(request)
+	if not user or not user['is_admin']:
+		return RedirectResponse('/login', status_code = 303)
+	set_setting('register_code_required', '1' if register_code_required_flag else '0')
+	set_setting('register_code', register_code.strip())
+	set_setting('new_user_free_uses', str(parse_free_uses(new_user_free_uses)))
+	return RedirectResponse('/admin', status_code = 303)
+
+
+@app.post('/admin/free_uses/{user_id}')
+def admin_free_uses(request : Request, user_id : int, free_uses_remaining : str = Form(...)):
+	user = current_user(request)
+	if not user or not user['is_admin']:
+		return RedirectResponse('/login', status_code = 303)
+	count = parse_free_uses(free_uses_remaining)
+	with closing(get_db()) as connection:
+		connection.execute(
+			'UPDATE users SET free_uses_remaining = ? WHERE id = ? AND is_admin = 0',
+			(count, user_id)
+		)
+		connection.commit()
 	return RedirectResponse('/admin', status_code = 303)
 
 
@@ -533,7 +657,20 @@ async def api_login(request : Request):
 		return JSONResponse({'ok': False, 'reason': '邮箱或密码不对。'}, status_code = 401)
 	if user['is_admin'] or user['is_paid']:
 		return {'ok': True, 'paid': True, 'email': user['email']}
-	return JSONResponse({'ok': False, 'reason': '该账号尚未开通付费。请使用免费试用，或在网站购买会员。'}, status_code = 403)
+	free_remaining = int(user.get('free_uses_remaining') or 0)
+	if free_remaining <= 0:
+		return JSONResponse({
+			'ok': False,
+			'reason': '免费次数已用完。请在网站购买会员后登录，或联系管理员。'
+		}, status_code = 403)
+	remaining = consume_free_use(int(user['id']))
+	return {
+		'ok': True,
+		'paid': False,
+		'email': user['email'],
+		'free_remaining': remaining,
+		'free_uses_left': remaining
+	}
 
 
 @app.post('/api/trial/start')

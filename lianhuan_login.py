@@ -58,7 +58,7 @@ class LoginApp:
 		pad.pack(fill = 'both', expand = True)
 
 		ttk.Label(pad, text = '脸幻', font = ('Microsoft YaHei UI', 18, 'bold')).pack(anchor = 'w')
-		ttk.Label(pad, text = '试用全部功能、不限天数。试用是否开放由后台开关决定。付费登录必须联网。', wraplength = 360).pack(anchor = 'w', pady = (8, 16))
+		ttk.Label(pad, text = '免费试用不限天（后台开关）。注册账号登录有启动次数，会员不限。', wraplength = 360).pack(anchor = 'w', pady = (8, 16))
 
 		self.trial_btn = ttk.Button(pad, text = '免费试用', command = self.trial)
 		self.trial_btn.pack(fill = 'x', ipady = 8)
@@ -80,7 +80,7 @@ class LoginApp:
 		self.email.pack(fill = 'x', pady = 4)
 		self.password = ttk.Entry(pad, show = '*')
 		self.password.pack(fill = 'x', pady = 4)
-		ttk.Button(pad, text = '付费登录', command = self.login).pack(fill = 'x', pady = (8, 4))
+		ttk.Button(pad, text = '账号登录', command = self.login).pack(fill = 'x', pady = (8, 4))
 
 		self.status = ttk.Label(pad, text = '', foreground = '#8a160f', wraplength = 360)
 		self.status.pack(anchor = 'w', pady = (12, 0))
@@ -114,6 +114,14 @@ class LoginApp:
 		self.set_status('正在登录…')
 		code, body = post_json('/api/login', {'email': email, 'password': password})
 		if code == 200 and body.get('ok'):
+			if body.get('paid'):
+				self.succeed()
+				return
+			left = body.get('free_remaining', body.get('free_uses_left'))
+			if left is not None:
+				self.set_status(f'登录成功，剩余免费启动 {left} 次。')
+				self.root.after(800, self.succeed)
+				return
 			self.succeed()
 			return
 		self.set_status(str(body.get('reason') or '登录失败。'))

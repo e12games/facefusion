@@ -64,6 +64,18 @@
 		<button class="btn" type="submit">保存发版</button>
 	</form>
 
+	<h2>注册与免费次数</h2>
+	<form class="switch" method="post" action="/admin/register">
+		<label class="toggle">
+			<input type="checkbox" name="register_code_required_flag" value="1" {% if register_code_required %}checked{% endif %}>
+			<span>注册必须填写注册码</span>
+		</label>
+		<label>通用注册码<input type="text" name="register_code" value="{{ register_code }}" autocomplete="off" placeholder="开启必填时用户须填此码"></label>
+		<label>新用户赠送启动次数<input type="number" name="new_user_free_uses" value="{{ new_user_free_uses }}" min="0" max="999" required></label>
+		<p class="hint">每次客户端「账号登录」成功计 1 次；与下方「免费试用」并存、互不扣减。</p>
+		<button class="btn" type="submit">保存注册设置</button>
+	</form>
+
 	<form class="switch" method="post" action="/admin/trial">
 		<label class="toggle">
 			<input type="checkbox" name="trial_enabled" value="1" {% if trial_enabled %}checked{% endif %}>
@@ -75,13 +87,21 @@
 	<h2>账号</h2>
 	<table>
 		<thead>
-			<tr><th>邮箱</th><th>付费</th><th>角色</th><th>操作</th></tr>
+			<tr><th>邮箱</th><th>付费</th><th>剩余次数</th><th>角色</th><th>操作</th></tr>
 		</thead>
 		<tbody>
 			{% for item in users %}
 			<tr>
 				<td>{{ item.email }}</td>
 				<td>{% if item.is_paid %}是{% else %}否{% endif %}</td>
+				<td>
+					{% if item.is_admin or item.is_paid %}—{% else %}
+					<form method="post" action="/admin/free_uses/{{ item.id }}" class="inline-form">
+						<input type="number" name="free_uses_remaining" value="{{ item.free_uses_remaining or 0 }}" min="0" max="999" style="width:4em">
+						<button type="submit">保存</button>
+					</form>
+					{% endif %}
+				</td>
 				<td>{% if item.is_admin %}管理员{% else %}用户{% endif %}</td>
 				<td>
 					{% if not item.is_admin %}

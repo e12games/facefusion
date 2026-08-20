@@ -4,6 +4,11 @@
 <section class="form-card buy-card">
 	<h1>购买会员</h1>
 	<p>使用 <strong>TRC20 网络的 USDT</strong> 支付。付款后提交交易哈希，系统会自动核对；若暂未确认，管理员会人工开通。</p>
+	{% if free_uses_remaining is defined and free_uses_remaining > 0 %}
+	<p class="ok">当前账号剩余免费启动次数：<strong>{{ free_uses_remaining }}</strong>（每次客户端登录计 1 次）</p>
+	{% elif free_uses_remaining is defined and free_uses_remaining == 0 %}
+	<p class="hint">免费次数已用完，请购买会员后在客户端登录。</p>
+	{% endif %}
 
 	<div class="price-box">
 		<p class="eyebrow">会员价格</p>

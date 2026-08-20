@@ -162,7 +162,7 @@ input[type="email"]:focus, input[type="password"]:focus {
 .support-hint { margin-top: 4px; }
 .mono { font-size: 12px; word-break: break-all; max-width: 160px; }
 
-table { width: 100%; border-collapse: collapse; }
+.admin form.inline-form input[type="number"] { width: 4em; margin-right: 6px; }
 th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); }
 th { color: var(--muted); font-weight: 600; }
 

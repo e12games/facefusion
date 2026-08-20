@@ -3,10 +3,14 @@
 {% block content %}
 <section class="form-card">
 	<h1>邮箱注册</h1>
-	<p>注册后用于付费登录绿色包。试用不必先注册。</p>
+	<p>注册成功后赠送 <strong>{{ new_user_free_uses }}</strong> 次客户端启动（用邮箱登录绿色包，每次启动计 1 次）。</p>
+	<p class="hint">不注册也可点客户端「免费试用」（以后台开关为准，与注册赠送次数无关）。</p>
 	{% if error %}<p class="error">{{ error }}</p>{% endif %}
 	<form method="post">
 		<label>邮箱<input type="email" name="email" value="{{ email|default('') }}" required></label>
+	{% if register_code_required %}
+		<label>注册码<input type="text" name="register_code" autocomplete="off" required placeholder="向管理员索取"></label>
+		{% endif %}
 		<label>密码<input type="password" name="password" minlength="6" required></label>
 		<label>再输一次密码<input type="password" name="password2" minlength="6" required></label>
 		<button class="btn" type="submit">注册</button>
