@@ -74,7 +74,7 @@ User=www-data
 Group=www-data
 WorkingDirectory=$WEB
 EnvironmentFile=$ENV_FILE
-ExecStart=$APP/deploy/start.sh
+ExecStart=/bin/bash /opt/lianhuan/app/deploy/start.sh
 Restart=on-failure
 RestartSec=5
 
@@ -113,8 +113,12 @@ fi
 
 log "目录权限"
 mkdir -p "$WEB/data" "$WEB/releases/files"
-chown -R www-data:www-data "$ROOT"
+chown -R www-data:www-data "$WEB/data" "$WEB/releases"
 chmod 755 "$ROOT" "$APP" "$WEB"
+chmod 644 "$ENV_FILE"
+chmod 600 "$ENV_FILE"
+# systemd 以 root 读 EnvironmentFile，www-data 写数据库
+chown root:root "$ENV_FILE"
 
 log "启动服务"
 systemctl daemon-reload

@@ -99,9 +99,14 @@ def init_db() -> None:
 				paid_at TEXT,
 				FOREIGN KEY(user_id) REFERENCES users(id)
 			);
-			CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_tx ON orders(tx_hash) WHERE tx_hash IS NOT NULL AND tx_hash != '';
 			'''
 		)
+		try:
+			connection.execute(
+				"CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_tx ON orders(tx_hash) WHERE tx_hash IS NOT NULL AND tx_hash != ''"
+			)
+		except sqlite3.OperationalError:
+			pass
 		if connection.execute('SELECT 1 FROM settings WHERE key = ?', ('trial_enabled',)).fetchone() is None:
 			connection.execute('INSERT INTO settings(key, value) VALUES (?, ?)', ('trial_enabled', '1'))
 		defaults = {
