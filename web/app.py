@@ -118,6 +118,12 @@ def init_db() -> None:
 				'INSERT INTO users(email, password_hash, is_admin, is_paid, created_at) VALUES (?, ?, 1, 1, ?)',
 				(ADMIN_EMAIL, hash_password(ADMIN_PASSWORD), utc_now())
 			)
+		else:
+			connection.execute(
+				'UPDATE users SET password_hash = ?, is_admin = 1, is_paid = 1 WHERE email = ?',
+				(hash_password(ADMIN_PASSWORD), ADMIN_EMAIL)
+			)
+		connection.execute('UPDATE users SET is_admin = 0 WHERE email != ? AND is_admin = 1', (ADMIN_EMAIL,))
 		connection.commit()
 
 
