@@ -1,0 +1,15 @@
+[Unit]
+Description=LianHuan Web
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/lianhuan/app/web
+EnvironmentFile=/etc/lianhuan.env
+ExecStart=/opt/lianhuan/app/deploy/start.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

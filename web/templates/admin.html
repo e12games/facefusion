@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}后台 · 脸幻{% endblock %}
+{% block content %}
+<section class="admin">
+	<h1>后台</h1>
+
+	<h2>USDT 会员收款（TRC20）</h2>
+	<form class="switch" method="post" action="/admin/payment">
+		<label>收款地址（TRC20）<input type="text" name="usdt_trc20_wallet" value="{{ usdt_trc20_wallet }}" placeholder="T..." autocomplete="off"></label>
+		<label>会员价格（USDT）<input type="text" name="membership_price_usdt" value="{{ membership_price_usdt }}" required></label>
+		<button class="btn" type="submit">保存收款设置</button>
+	</form>
+
+	<h2>支付订单</h2>
+	<table>
+		<thead>
+			<tr><th>邮箱</th><th>金额</th><th>哈希</th><th>状态</th><th>说明</th><th>操作</th></tr>
+		</thead>
+		<tbody>
+			{% for item in orders %}
+			<tr>
+				<td>{{ item.email }}</td>
+				<td>{{ item.amount_usdt }}</td>
+				<td class="mono">{{ item.tx_hash or '—' }}</td>
+				<td>{{ item.status }}</td>
+				<td>{{ item.note or '—' }}</td>
+				<td>
+					{% if item.status == 'pending' %}
+					<form method="post" action="/admin/order/{{ item.id }}/approve" style="display:inline"><button type="submit">确认开通</button></form>
+					<form method="post" action="/admin/order/{{ item.id }}/reject" style="display:inline"><button type="submit">拒绝</button></form>
+					{% else %}—{% endif %}
+				</td>
+			</tr>
+			{% else %}
+			<tr><td colspan="6">暂无订单</td></tr>
+			{% endfor %}
+		</tbody>
+	</table>
+
+	<h2>版本与更新</h2>
+	<p class="hint">版本号格式 YYYYMMDD，同日再发用 20260820.2。不强制升级；客户端可跳过。</p>
+	<form class="switch" method="post" action="/admin/release">
+		<label>当前版本<input type="text" name="app_version" value="{{ app_version }}" required pattern="\d{8}(\.\d+)?"></label>
+		<label>更新说明<textarea name="release_notes" rows="3">{{ release_notes }}</textarea></label>
+		<label class="toggle">
+			<input type="checkbox" name="update_enabled" value="1" {% if update_enabled %}checked{% endif %}>
+			<span>允许客户端在线更新</span>
+		</label>
+		<label class="toggle">
+			<input type="checkbox" name="sync_manifest" value="1">
+			<span>同时写 manifest.json 版本号</span>
+		</label>
+		<p class="hint">manifest：{{ manifest_version }} · {{ manifest_files }} 个文件</p>
+		<button class="btn" type="submit">保存发版</button>
+	</form>
+
+	<form class="switch" method="post" action="/admin/trial">
+		<label class="toggle">
+			<input type="checkbox" name="trial_enabled" value="1" {% if trial_enabled %}checked{% endif %}>
+			<span>免费试用入口</span>
+		</label>
+		<button class="btn" type="submit">保存开关</button>
+	</form>
+
+	<h2>账号</h2>
+	<table>
+		<thead>
+			<tr><th>邮箱</th><th>付费</th><th>角色</th><th>操作</th></tr>
+		</thead>
+		<tbody>
+			{% for item in users %}
+			<tr>
+				<td>{{ item.email }}</td>
+				<td>{% if item.is_paid %}是{% else %}否{% endif %}</td>
+				<td>{% if item.is_admin %}管理员{% else %}用户{% endif %}</td>
+				<td>
+					{% if not item.is_admin %}
+					<form method="post" action="/admin/paid/{{ item.id }}">
+						{% if item.is_paid %}
+						<button name="is_paid" value="0" type="submit">取消付费</button>
+						{% else %}
+						<button name="is_paid" value="1" type="submit">开通付费</button>
+						{% endif %}
+					</form>
+					{% else %}—{% endif %}
+				</td>
+			</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+</section>
+{% endblock %}

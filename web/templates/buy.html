@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}购买会员 · 脸幻{% endblock %}
+{% block content %}
+<section class="form-card buy-card">
+	<h1>购买会员</h1>
+	<p>使用 <strong>TRC20 网络的 USDT</strong> 支付。付款后提交交易哈希，系统会自动核对；若暂未确认，管理员会人工开通。</p>
+
+	<div class="price-box">
+		<p class="eyebrow">会员价格</p>
+		<p class="price">{{ price }} USDT</p>
+	</div>
+
+	{% if not wallet %}
+	<p class="error">收款地址尚未配置，请稍后再试。</p>
+	{% else %}
+	<ol class="pay-steps">
+		<li>打开你的钱包（支持 TRC20 USDT），向下面地址转账 <strong>{{ price }} USDT</strong>。</li>
+		<li>网络务必选择 <strong>TRC20 / Tron</strong>，不要选 ERC20、BEP20。</li>
+		<li>转账成功后，复制链上 <strong>交易哈希（TxID）</strong>，在下方提交。</li>
+	</ol>
+	<p class="wallet"><span>收款地址</span><code id="wallet">{{ wallet }}</code></p>
+	<p class="hint">可先注册账号再付款，付款邮箱需与登录邮箱一致。</p>
+
+	{% if error %}<p class="error">{{ error }}</p>{% endif %}
+	{% if message %}<p class="ok">{{ message }}</p>{% endif %}
+
+	<form method="post">
+		<label>交易哈希（TxID）<input type="text" name="tx_hash" placeholder="64 位哈希" required autocomplete="off"></label>
+		<button class="btn" type="submit">提交支付凭证</button>
+	</form>
+	{% endif %}
+
+	{% if orders %}
+	<h2>我的订单</h2>
+	<table>
+		<thead><tr><th>时间</th><th>金额</th><th>状态</th><th>说明</th></tr></thead>
+		<tbody>
+			{% for item in orders %}
+			<tr>
+				<td>{{ item.created_at }}</td>
+				<td>{{ item.amount_usdt }} U</td>
+				<td>{% if item.status == 'paid' %}已开通{% elif item.status == 'pending' %}待确认{% elif item.status == 'rejected' %}已拒绝{% else %}{{ item.status }}{% endif %}</td>
+				<td>{{ item.note or item.tx_hash or '—' }}</td>
+			</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+	{% endif %}
+</section>
+{% endblock %}

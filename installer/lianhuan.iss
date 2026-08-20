@@ -1,7 +1,7 @@
 ﻿; UTF-8 with BOM required for Chinese text in Inno Setup.
 #define MyAppName "脸幻中文版"
-#define MyAppVersion "1.0.0"
-#define MyAppPublisher "非官方中文发行（基于 FaceFusion）"
+#define MyAppVersion "20260820"
+#define MyAppPublisher "脸幻"
 #define SrcDir "c:\bak\gamesb1_soft\PC端\face\脸幻中文便携版"
 #define OutDir "c:\bak\gamesb1_soft\PC端\face\installer-output"
 
@@ -46,10 +46,10 @@ Source: "{#SrcDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs cre
 Name: "{app}\internal"; Attribs: hidden
 
 [Icons]
-Name: "{group}\脸幻中文版"; Filename: "{app}\启动换脸.bat"; WorkingDir: "{app}"; IconFilename: "{app}\internal\app\facefusion.ico"
+Name: "{group}\脸幻"; Filename: "{app}\启动换脸.bat"; WorkingDir: "{app}"; IconFilename: "{app}\internal\app\facefusion.ico"
 Name: "{group}\使用说明"; Filename: "{app}\使用说明.txt"
-Name: "{group}\卸载脸幻中文版"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\脸幻中文版"; Filename: "{app}\启动换脸.bat"; WorkingDir: "{app}"; IconFilename: "{app}\internal\app\facefusion.ico"; Tasks: desktopicon
+Name: "{group}\卸载脸幻"; Filename: "{uninstallexe}"
+Name: "{autodesktop}\脸幻"; Filename: "{app}\启动换脸.bat"; WorkingDir: "{app}"; IconFilename: "{app}\internal\app\facefusion.ico"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\启动换脸.bat"; Description: "安装完成后立即启动"; Flags: nowait postinstall skipifsilent unchecked

@@ -1,0 +1,175 @@
+:root {
+	--bg: #12141a;
+	--ink: #e6e2dc;
+	--muted: #9a968f;
+	--card: #1a1d26;
+	--line: #2c303a;
+	--accent: #e07a6a;
+	--accent-dark: #f0a090;
+	--input-bg: #0f1116;
+}
+
+* { box-sizing: border-box; }
+
+html {
+	color-scheme: dark;
+}
+
+body {
+	margin: 0;
+	font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+	background: var(--bg);
+	color: var(--ink);
+	line-height: 1.55;
+}
+
+.top {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 16px 28px;
+	border-bottom: 1px solid var(--line);
+	background: var(--card);
+}
+
+.logo {
+	font-weight: 700;
+	letter-spacing: 0.12em;
+	text-decoration: none;
+	color: var(--ink);
+}
+
+nav { display: flex; gap: 16px; align-items: center; }
+nav a { color: var(--ink); text-decoration: none; }
+nav a:hover { color: var(--accent); }
+.who { color: var(--muted); font-size: 14px; }
+
+main { max-width: 880px; margin: 0 auto; padding: 40px 20px 64px; }
+
+footer {
+	text-align: center;
+	color: var(--muted);
+	font-size: 13px;
+	padding: 0 20px 40px;
+}
+
+.hero h1 { font-size: 40px; line-height: 1.2; margin: 8px 0 16px; }
+.lead { font-size: 18px; max-width: 36em; color: var(--ink); }
+.eyebrow { color: var(--accent); font-weight: 600; margin: 0; }
+.actions { display: flex; gap: 12px; margin: 24px 0 12px; flex-wrap: wrap; }
+
+.btn {
+	display: inline-block;
+	background: var(--accent);
+	color: #1a1210;
+	text-decoration: none;
+	border: 0;
+	padding: 10px 16px;
+	cursor: pointer;
+	font: inherit;
+	font-weight: 600;
+}
+
+.btn:hover { filter: brightness(1.08); }
+
+.btn.ghost {
+	background: transparent;
+	color: var(--ink);
+	border: 1px solid var(--line);
+	font-weight: 400;
+}
+
+.btn.ghost:hover {
+	border-color: var(--muted);
+	background: rgba(255, 255, 255, 0.04);
+}
+
+.hint { color: var(--muted); font-size: 14px; }
+
+.grid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 16px;
+	margin: 48px 0;
+}
+
+.grid article, .steps, .form-card, .admin {
+	background: var(--card);
+	border: 1px solid var(--line);
+	padding: 20px;
+	border-radius: 4px;
+}
+
+.grid article h2, .steps h2, .form-card h1, .admin h1, .admin h2 {
+	margin-top: 0;
+}
+
+.steps ol { padding-left: 20px; }
+.form-card { max-width: 420px; }
+form label { display: block; margin: 12px 0; }
+textarea {
+	width: 100%;
+	margin-top: 6px;
+	padding: 8px 10px;
+	border: 1px solid var(--line);
+	font: inherit;
+	background: var(--input-bg);
+	color: var(--ink);
+	border-radius: 3px;
+	resize: vertical;
+}
+code { font-size: 13px; color: var(--muted); }
+
+input[type="email"], input[type="password"] {
+	width: 100%;
+	margin-top: 6px;
+	padding: 8px 10px;
+	border: 1px solid var(--line);
+	font: inherit;
+	background: var(--input-bg);
+	color: var(--ink);
+	border-radius: 3px;
+}
+
+input[type="email"]:focus, input[type="password"]:focus {
+	outline: none;
+	border-color: var(--accent);
+}
+
+.error { color: var(--accent-dark); }
+.ok { color: #7dcea0; font-size: 14px; }
+.price-line { font-size: 22px; }
+.buy-card { max-width: 640px; }
+.price-box { margin: 20px 0; padding: 16px; border: 1px solid var(--line); background: rgba(255,255,255,0.02); }
+.price { font-size: 32px; margin: 4px 0 0; font-weight: 700; }
+.pay-steps { padding-left: 20px; }
+.wallet code { display: block; margin-top: 8px; padding: 10px; word-break: break-all; background: var(--input-bg); border: 1px solid var(--line); font-size: 13px; }
+.mono { font-size: 12px; word-break: break-all; max-width: 160px; }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 600; }
+
+button[type="submit"] {
+	background: var(--card);
+	color: var(--ink);
+	border: 1px solid var(--line);
+	padding: 6px 10px;
+	cursor: pointer;
+	font: inherit;
+	border-radius: 3px;
+}
+
+button[type="submit"]:hover {
+	border-color: var(--muted);
+	background: rgba(255, 255, 255, 0.04);
+}
+
+.toggle { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.switch { margin: 16px 0 32px; }
+
+@media (max-width: 720px) {
+	.grid { grid-template-columns: 1fr; }
+	.hero h1 { font-size: 30px; }
+	.top { flex-direction: column; align-items: flex-start; gap: 12px; }
+}

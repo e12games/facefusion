@@ -1,39 +1,31 @@
-# 脸幻（FaceFusion 非官方中文）
+# 脸幻
 
-基于开源 [FaceFusion](https://github.com/facefusion/facefusion) 的中文界面版本，**非官方发行**。许可证：OpenRAIL-AS。
+本地换脸 · 中文界面。软件在你电脑上运行，不是云端。
 
-界面在你自己电脑上打开，不是云端。请只处理你有权使用的照片和视频。
+## Windows 客户端
 
-## 使用方法（Windows）
+1. 解压绿色包或安装后，双击 **启动换脸.bat**
+2. 黑窗提示「正在启动 / 可能下载模型」时请勿关闭
+3. 登录窗：**免费试用** 或 **邮箱付费登录**（须联网）
+4. 浏览器打开后：「脸」放人脸照 →「原图/视频」放素材 → 点「开始」
 
-环境只需装一次：
+开发环境：安装 Miniconda 后执行 `python install.py directml`，再双击 `启动换脸.bat`。
 
-1. 安装 Miniconda、FFmpeg
-2. 打开终端执行：
+## 网站与会员
 
-```
-conda create --name facefusion python=3.12
-conda activate facefusion
-python install.py directml
-```
+- 官网注册邮箱，**TRC20 USDT** 购买会员后，客户端用同一邮箱登录
+- 试用不限天数，是否开放由后台控制
 
-仅 CPU 时把最后一行改成 `python install.py default`。
+## VPS 部署网站（一键）
 
-3. 双击 `启动换脸.bat`，或执行：
-
-```
-conda activate facefusion
-python facefusion.py run --open-browser
+```bash
+curl -fsSL https://raw.githubusercontent.com/e12games/facefusion/main/deploy/vps-install.sh | bash
 ```
 
-浏览器打开后：
+默认端口 **8092**（仅本机）。宝塔 / Nginx 将域名反代到 `http://127.0.0.1:8092`。
 
-1. 「脸」里放要贴上去的人脸照片  
-2. 「原图/视频」里放被换的图或视频  
-3. 点「开始」  
+部署后编辑 `/etc/lianhuan.env` 修改管理员密码，详见 `deploy/DEPLOY.md`。
 
-默认已勾选换脸和增强。第一次可能联网下载模型（优先 GitHub）。
+## 发版
 
-英文界面：`python facefusion.py run --open-browser --language en`
-
-更多命令见 `python facefusion.py -h`。原项目文档：https://docs.facefusion.io
+见 [RELEASE.md](RELEASE.md)

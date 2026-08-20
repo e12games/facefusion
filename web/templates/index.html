@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}脸幻 · 本地换脸{% endblock %}
+{% block content %}
+<section class="hero">
+	<p class="eyebrow">本地运行 · 中文界面</p>
+	<h1>把一张脸，换到图或视频上</h1>
+	<p class="lead">软件开在你自己的电脑里，不是云端。先试用全部功能；满意后再注册邮箱、购买后登录。</p>
+	<div class="actions">
+		<a class="btn" href="/register">邮箱注册</a>
+		<a class="btn ghost" href="/login">已有账号登录</a>
+	</div>
+	<p class="hint">试用在绿色包启动窗点「免费试用」，无需先在网站领取。试用是否开放由后台开关控制。</p>
+</section>
+
+<section class="grid" id="feat">
+	<article><h2>换脸</h2><p>上传一张清晰人脸，再选原图或视频，即可替换。</p></article>
+	<article><h2>增强</h2><p>默认同时开人脸增强，换完更清楚。</p></article>
+	<article><h2>本机处理</h2><p>图片和视频都在你电脑上算，结果保存在本地。</p></article>
+</section>
+
+<section class="steps" id="use">
+	<h2>怎么用</h2>
+	<ol>
+		<li>安装或解压后，双击「启动换脸.bat」。</li>
+		<li>试用：点「免费试用」（需联网，以后台开关为准）。付费：用网站注册的邮箱登录（必须联网）。</li>
+		<li>浏览器打开后，在「脸」里放人脸照，在「原图/视频」里放要换的素材。</li>
+		<li>点「开始」，到「结果」里查看。</li>
+	</ol>
+	<p>电脑越新、显卡越好越快。第一次可能下载模型，请保持网络畅通。</p>
+</section>
+
+<section class="steps" id="price">
+	<h2>会员价格</h2>
+	<p class="price-line"><strong>{{ membership_price_usdt }} USDT</strong>（TRC20 网络）</p>
+	<ol>
+		<li>邮箱注册并登录</li>
+		<li>打开 <a href="/buy">购买会员</a>，按页面地址转账 USDT</li>
+		<li>提交交易哈希，通过后客户端用邮箱登录</li>
+	</ol>
+	<p class="hint">可先免费试用全部功能；试用是否开放由后台控制。</p>
+</section>
+{% endblock %}

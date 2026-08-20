@@ -7,4 +7,12 @@ __pycache__
 .vscode
 .cursor
 installer-output
+dist/
+launcher/build/
+launcher/*.spec
+脸幻.exe
+web/data
+web/config.json
+web/releases/files/*
+!web/releases/files/.gitkeep
 *.pyc

@@ -1,32 +1,6 @@
-脸幻 中文便携版 · 使用说明
-（非官方中文发行，基于开源项目 FaceFusion）
+脸幻 · 使用说明
 
-一、怎么打开
-双击「启动换脸.bat」。稍等后会自动打开浏览器，界面在你自己电脑上，不是网上的云端。
+绿色包 / 安装版：双击「启动换脸.bat」。
+开发环境：在本目录双击「启动换脸.bat」（需已安装 conda 环境 facefusion）。
 
-第一次启动前需要先装好环境（只需一次）：
-1. 安装 Miniconda、Git、FFmpeg
-2. conda create --name facefusion python=3.12 pip=25.0
-3. conda activate facefusion
-4. 有独立显卡（多数 Windows）：python install.py directml
-   只有 CPU：python install.py default
-5. 再双击「启动换脸.bat」
-
-二、怎么换脸（最常用）
-1. 「脸」：上传要贴上去的人脸照片（脸要清楚、尽量正面）
-2. 「原图/视频」：上传被换脸的图片或视频
-3. 「功能」保持勾选：face_swapper（换脸）、face_enhancer（让脸更清晰）
-4. 看「预览」，满意后点「开始」
-5. 结果在「结果」里，也可到「保存路径」查看文件
-
-三、注意
-- 请只处理你有权使用的照片和视频。
-- 模型文件没有中英文之分；界面是中文，模型名仍是英文（如 hyperswap_1a_256）。
-- 第一次运行可能联网下载模型，请保持网络畅通（默认走 Hugging Face / 国内镜像）。
-- 没有独显会很慢。处理视频比处理图片更耗时间。
-- 口型同步、年龄、抠图等功能需要时再在「功能」里额外勾选，可能再下载模型。
-
-四、打不开时
-- 用「开始菜单」里的 Anaconda Prompt / Miniconda Prompt，先输入 conda activate facefusion，再运行本目录的启动脚本。
-- 确认已安装 ffmpeg，终端里输入 ffmpeg -version 能显示版本。
-- 想用英文界面：python facefusion.py run --open-browser --language en
+首次启动黑色窗口会提示进度；可能要下载模型，请耐心等待，勿关窗口。

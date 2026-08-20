@@ -1,0 +1,5 @@
+facefusion.iqiyia.cyou {
+	encode gzip
+	# 与 /etc/lianhuan.env 里 LIANHUAN_PORT 保持一致（默认 8092）
+	reverse_proxy 127.0.0.1:8092
+}
