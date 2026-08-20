@@ -24,9 +24,11 @@ DATA_DIR = ROOT / 'data'
 DB_PATH = DATA_DIR / 'lianhuan.db'
 RELEASES_DIR = ROOT / 'releases'
 SECRET = os.environ.get('LIANHUAN_SECRET', 'lianhuan-dev-secret-change-me')
-ADMIN_EMAIL = os.environ.get('LIANHUAN_ADMIN_EMAIL', 'admin@local.test').strip().lower()
+ADMIN_EMAIL = os.environ.get('LIANHUAN_ADMIN_EMAIL', 'admin@lianhuan.local').strip().lower()
 ADMIN_PASSWORD = os.environ.get('LIANHUAN_ADMIN_PASSWORD', 'admin123')
 VERSION_RE = re.compile(r'^(\d{8})(?:\.(\d+))?$')
+DEFAULT_ADMIN_EMAIL = 'admin@lianhuan.local'
+DEFAULT_ADMIN_PASSWORD = 'admin123'
 
 app = FastAPI(title = '脸幻')
 app.add_middleware(SessionMiddleware, secret_key = SECRET, session_cookie = 'lianhuan_session')
@@ -107,7 +109,8 @@ def init_db() -> None:
 			'release_notes': '',
 			'update_enabled': '1',
 			'usdt_trc20_wallet': '',
-			'membership_price_usdt': '29'
+			'membership_price_usdt': '29',
+			'admin_password_changed': '0'
 		}
 		for key, value in defaults.items():
 			if connection.execute('SELECT 1 FROM settings WHERE key = ?', (key,)).fetchone() is None:
@@ -118,13 +121,11 @@ def init_db() -> None:
 				'INSERT INTO users(email, password_hash, is_admin, is_paid, created_at) VALUES (?, ?, 1, 1, ?)',
 				(ADMIN_EMAIL, hash_password(ADMIN_PASSWORD), utc_now())
 			)
-		else:
-			connection.execute(
-				'UPDATE users SET password_hash = ?, is_admin = 1, is_paid = 1 WHERE email = ?',
-				(hash_password(ADMIN_PASSWORD), ADMIN_EMAIL)
-			)
-		connection.execute('UPDATE users SET is_admin = 0 WHERE email != ? AND is_admin = 1', (ADMIN_EMAIL,))
 		connection.commit()
+
+
+def needs_password_hint() -> bool:
+	return setting('admin_password_changed', '0') != '1'
 
 
 def setting(key : str, fallback : str = '') -> str:
@@ -152,11 +153,14 @@ def current_user(request : Request) -> Optional[dict[str, Any]]:
 
 
 def render(request : Request, name : str, extra : Optional[dict[str, Any]] = None):
+	user = current_user(request)
 	payload = {
 		'request': request,
-		'user': current_user(request),
+		'user': user,
 		'trial_enabled': setting('trial_enabled') == '1',
-		'membership_price_usdt': setting('membership_price_usdt', '29')
+		'membership_price_usdt': setting('membership_price_usdt', '29'),
+		'need_password_hint': bool(user and user.get('is_admin') and needs_password_hint()),
+		'default_admin_email': DEFAULT_ADMIN_EMAIL
 	}
 	if extra:
 		payload.update(extra)
@@ -421,6 +425,47 @@ def admin_order_reject(request : Request, order_id : int):
 		)
 		connection.commit()
 	return RedirectResponse('/admin', status_code = 303)
+
+
+@app.get('/admin/password')
+def admin_password_page(request : Request):
+	user = current_user(request)
+	if not user or not user['is_admin']:
+		return RedirectResponse('/login', status_code = 303)
+	return render(request, 'admin_password.html', {'error': '', 'message': ''})
+
+
+@app.post('/admin/password')
+def admin_password_save(
+	request : Request,
+	old_password : str = Form(...),
+	new_password : str = Form(...),
+	new_password2 : str = Form(...)
+):
+	user = current_user(request)
+	if not user or not user['is_admin']:
+		return RedirectResponse('/login', status_code = 303)
+	error = ''
+	message = ''
+	if not verify_password(old_password, user['password_hash']):
+		error = '当前密码不对。'
+	elif len(new_password) < 8:
+		error = '新密码至少 8 位。'
+	elif new_password != new_password2:
+		error = '两次新密码不一致。'
+	elif new_password == DEFAULT_ADMIN_PASSWORD:
+		error = '请不要继续使用默认密码。'
+	if error:
+		return render(request, 'admin_password.html', {'error': error, 'message': ''})
+	with closing(get_db()) as connection:
+		connection.execute(
+			'UPDATE users SET password_hash = ? WHERE id = ?',
+			(hash_password(new_password), user['id'])
+		)
+		connection.commit()
+	set_setting('admin_password_changed', '1')
+	message = '密码已更新。请牢记新密码。'
+	return render(request, 'admin_password.html', {'error': '', 'message': message})
 
 
 @app.post('/admin/release')

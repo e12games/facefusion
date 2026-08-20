@@ -138,6 +138,15 @@ input[type="email"]:focus, input[type="password"]:focus {
 
 .error { color: var(--accent-dark); }
 .ok { color: #7dcea0; font-size: 14px; }
+.warn-box {
+	margin: 0 0 20px;
+	padding: 12px 14px;
+	border: 1px solid #c9a227;
+	background: rgba(201, 162, 39, 0.12);
+	border-radius: 4px;
+	color: #f0d78c;
+}
+.warn-box a { color: var(--accent); }
 .price-line { font-size: 22px; }
 .buy-card { max-width: 640px; }
 .price-box { margin: 20px 0; padding: 16px; border: 1px solid var(--line); background: rgba(255,255,255,0.02); }

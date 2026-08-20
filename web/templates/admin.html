@@ -4,6 +4,16 @@
 <section class="admin">
 	<h1>后台</h1>
 
+	{% if need_password_hint %}
+	<div class="warn-box">
+		<strong>安全提示：</strong>当前仍是安装默认管理员密码。建议尽快
+		<a href="/admin/password">修改密码</a>。
+		<span class="hint">（仅提示，不强制；改完后此条消失）</span>
+	</div>
+	{% endif %}
+
+	<p class="hint"><a href="/admin/password">修改管理员密码</a></p>
+
 	<h2>USDT 会员收款（TRC20）</h2>
 	<form class="switch" method="post" action="/admin/payment">
 		<label>收款地址（TRC20）<input type="text" name="usdt_trc20_wallet" value="{{ usdt_trc20_wallet }}" placeholder="T..." autocomplete="off"></label>

@@ -18,6 +18,7 @@
 				<span class="who">{{ user.email }}</span>
 				{% if not user.is_admin and not user.is_paid %}<a href="/buy">购买会员</a>{% endif %}
 				{% if user.is_admin %}<a href="/admin">后台</a>{% endif %}
+				{% if user.is_admin and need_password_hint %}<a href="/admin/password" class="hint">请改密</a>{% endif %}
 				<a href="/logout">退出</a>
 			{% else %}
 				<a href="/login">登录</a>

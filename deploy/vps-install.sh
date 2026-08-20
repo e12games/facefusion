@@ -86,12 +86,12 @@ if [[ ! -f "$ENV_FILE" ]]; then
 	SECRET=$(python3 -c 'import secrets; print(secrets.token_hex(32))')
 	cat > "$ENV_FILE" << EOF
 LIANHUAN_SECRET=$SECRET
-LIANHUAN_ADMIN_EMAIL=admin@local.test
+LIANHUAN_ADMIN_EMAIL=admin@lianhuan.local
 LIANHUAN_ADMIN_PASSWORD=admin123
 LIANHUAN_PORT=$PORT
 EOF
 	chmod 600 "$ENV_FILE"
-	log "已创建 $ENV_FILE（默认 admin@local.test / admin123，请尽快修改）"
+	log "已创建 $ENV_FILE（默认管理员 admin@lianhuan.local / admin123，进后台会提示改密）"
 else
 	if ! grep -q '^LIANHUAN_PORT=' "$ENV_FILE"; then
 		echo "LIANHUAN_PORT=$PORT" >> "$ENV_FILE"
@@ -139,7 +139,8 @@ cat << EOF
 API： http://127.0.0.1:${PORT}/api/version
 配置：$ENV_FILE
 域名：facefusion.iqiyia.cyou
+默认管理员：admin@lianhuan.local / admin123
+（进后台会提示改密，不强制）
 宝塔：站点 → SSL → 反向代理 http://127.0.0.1:${PORT}
-改密：nano $ENV_FILE && systemctl restart $SERVICE
 ========================================
 EOF

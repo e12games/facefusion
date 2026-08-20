@@ -4,6 +4,7 @@
 <section class="form-card">
 	<h1>登录</h1>
 	<p>网站登录可进后台（管理员）或查看账号。绿色包请使用同一邮箱密码，且必须联网。</p>
+	<p class="hint">安装默认管理员：<code>admin@lianhuan.local</code> / <code>admin123</code>（进后台后请改密）</p>
 	{% if error %}<p class="error">{{ error }}</p>{% endif %}
 	<form method="post">
 		<label>邮箱<input type="email" name="email" value="{{ email|default('') }}" required></label>
