@@ -178,7 +178,7 @@ def on_startup() -> None:
 	init_db()
 
 
-@app.get('/')
+@app.api_route('/', methods = ['GET', 'HEAD'])
 def home(request : Request):
 	return render(request, 'index.html')
 
