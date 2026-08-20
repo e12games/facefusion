@@ -7,7 +7,7 @@ METADATA =\
 	'version': '3.8.2',
 	'license': 'OpenRAIL-AS',
 	'author': 'Henry Ruhs',
-	'url': 'https://facefusion.io'
+	'url': 'https://facefusion.iqiyia.cyou/'
 }
 
 

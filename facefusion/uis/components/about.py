@@ -8,6 +8,8 @@ from facefusion import metadata, translator
 METADATA_BUTTON : Optional[gradio.Button] = None
 ACTION_BUTTON : Optional[gradio.Button] = None
 
+SITE_URL = 'https://facefusion.iqiyia.cyou/'
+
 
 def render() -> None:
 	global METADATA_BUTTON
@@ -17,22 +19,22 @@ def render() -> None:
 	[
 		{
 			'translator': translator.get('about.fund'),
-			'url': 'https://fund.facefusion.io'
+			'url': SITE_URL
 		},
 		{
 			'translator': translator.get('about.subscribe'),
-			'url': 'https://subscribe.facefusion.io'
+			'url': SITE_URL
 		},
 		{
 			'translator': translator.get('about.join'),
-			'url': 'https://join.facefusion.io'
+			'url': SITE_URL
 		}
 	])
 
 	METADATA_BUTTON = gradio.Button(
 		value = metadata.get('name') + ' ' + metadata.get('version'),
 		variant = 'primary',
-		link = metadata.get('url')
+		link = metadata.get('url') or SITE_URL
 	)
 	ACTION_BUTTON = gradio.Button(
 		value = action.get('translator'),
