@@ -41,7 +41,21 @@ def git_env() -> dict[str, str]:
 	return env
 
 
-def run_git(args : list[str], timeout : int = 120) -> tuple[int, str]:
+def run_git_local(args : list[str], timeout : int = 30) -> tuple[int, str]:
+	"""只读本地仓库，不需要 sudo。"""
+	result = subprocess.run(
+		['git', '-C', str(APP_ROOT), *args],
+		capture_output = True,
+		text = True,
+		timeout = timeout,
+		env = git_env()
+	)
+	output = (result.stdout or '') + (result.stderr or '')
+	return result.returncode, output.strip()
+
+
+def run_git_sudo(args : list[str], timeout : int = 120) -> tuple[int, str]:
+	"""写操作 / fetch：通过 sudo 调 web-git.sh。"""
 	if not GIT_SCRIPT.is_file():
 		return 1, f'未找到 {GIT_SCRIPT}'
 	result = subprocess.run(
@@ -58,15 +72,8 @@ def run_git(args : list[str], timeout : int = 120) -> tuple[int, str]:
 def git_fetch() -> tuple[bool, str]:
 	if not GIT_SCRIPT.is_file():
 		return False, f'未找到 {GIT_SCRIPT}'
-	result = subprocess.run(
-		['sudo', '-n', '-E', '/bin/bash', str(GIT_SCRIPT), '_fetch', BRANCH],
-		capture_output = True,
-		text = True,
-		timeout = 120,
-		env = git_env()
-	)
-	output = (result.stdout or '') + (result.stderr or '')
-	return result.returncode == 0, output.strip()
+	code, output = run_git_sudo(['_fetch', BRANCH])
+	return code == 0, output
 
 
 def git_status(fetch : bool = True) -> dict[str, Any]:
@@ -77,15 +84,18 @@ def git_status(fetch : bool = True) -> dict[str, Any]:
 			'reason': '当前环境不是 Git 部署目录（本地开发不可用，仅 VPS 生产环境可用）。',
 			'app_root': str(APP_ROOT)
 		}
-	_, branch_out = run_git(['rev-parse', '--abbrev-ref', 'HEAD'])
-	_, local_out = run_git(['rev-parse', '--short', 'HEAD'])
+	_, branch_out = run_git_local(['rev-parse', '--abbrev-ref', 'HEAD'])
+	_, local_out = run_git_local(['rev-parse', '--short', 'HEAD'])
 	fetch_ok = True
 	fetch_detail = ''
 	if fetch:
 		fetch_ok, fetch_detail = git_fetch()
-	_, remote_out = run_git(['rev-parse', '--short', f'origin/{BRANCH}'])
+	_, remote_out = run_git_local(['rev-parse', '--short', f'origin/{BRANCH}'])
 	local = local_out.strip() or '?'
-	remote = remote_out.strip() if fetch_ok else '?'
+	remote = remote_out.strip() if remote_out and 'fatal' not in remote_out.lower() else '?'
+	if fetch_ok and remote == '?':
+		_, remote_out2 = run_git_sudo(['rev-parse', '--short', f'origin/{BRANCH}'])
+		remote = remote_out2.strip() or '?'
 	branch = branch_out.strip() or BRANCH
 	update_available = fetch_ok and local != '?' and remote != '?' and local != remote
 	return {
@@ -108,9 +118,7 @@ def check_web_update() -> dict[str, Any]:
 	if not status.get('ok'):
 		return status
 	if not status.get('fetch_ok'):
-		hint = '请在 VPS 执行一次：sudo bash /opt/lianhuan/app/deploy/fix-web-git-sudo.sh'
-		if not status.get('has_github_token'):
-			hint += '；私有仓库还需在 /etc/lianhuan.env 设置 GITHUB_TOKEN'
+		hint = '请在 VPS 执行：sudo bash /opt/lianhuan/app/deploy/fix-web-git-sudo.sh'
 		status['message'] = f"无法连接 Git 远程：{status.get('fetch_detail') or 'fetch 失败'}。{hint}"
 		return status
 	if status.get('update_available'):
@@ -132,7 +140,7 @@ def apply_web_update() -> dict[str, Any]:
 		return {'ok': False, 'reason': f'未找到更新脚本：{UPDATE_SCRIPT}'}
 	status = git_status(fetch = True)
 	if not status.get('fetch_ok'):
-		hint = '请先执行 deploy/fix-web-git-sudo.sh 配置 sudo；私有库需 GITHUB_TOKEN。'
+		hint = '请先执行 deploy/fix-web-git-sudo.sh 配置 sudo。'
 		return {'ok': False, 'reason': (status.get('fetch_detail') or 'git fetch 失败') + ' ' + hint}
 	try:
 		LOCK_PATH.write_text('1', encoding = 'utf-8')
