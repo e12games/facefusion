@@ -46,9 +46,45 @@
 
 ## E. 热更新演练（建议每次发版做一次）
 
-- [ ] 服务端 manifest 有至少 1 个文件
-- [ ] 客户端版本故意落后，启动时应提示更新
-- [ ] 更新后 `internal/update/state.json` 版本变新
+### E1. 探针发版（绿色包保持 20260820）
+
+1. 确认探针文件已在仓库：`web/releases/files/lianhuan_probe.txt`
+2. 本地生成 manifest（或 git pull 后 VPS 上已有）：
+   ```bash
+   python scripts/build_release_manifest.py 20260820.2 "探针测试"
+   ```
+3. 推送到 GitHub，VPS 执行：
+   ```bash
+   cd /opt/lianhuan/app && git pull && systemctl restart lianhuan-web
+   ```
+4. 后台 `/admin` → **版本与更新**：
+   - 当前版本填 **`20260820.2`**
+   - 勾选「允许客户端在线更新」
+   - 勾选「同时写 manifest.json 版本号」→ 保存
+5. 浏览器验证：
+   - `https://facefusion.iqiyia.cyou/api/version` → `version` 为 `20260820.2`
+   - `https://facefusion.iqiyia.cyou/releases/files/lianhuan_probe.txt` → 能下载
+6. **绿色包不要改** `internal/app/lianhuan_version.txt`（保持 `20260820`）
+7. 双击 `启动换脸.bat` → 应弹出「发现新版本 20260820.2」→ 点「是」
+8. 更新成功后检查：
+   - `internal/app/lianhuan_probe.txt` 存在
+   - `internal/app/lianhuan_version.txt` 变为 `20260820.2`
+   - `internal/update/state.json` 中 `version` 为 `20260820.2`
+
+### E2. 错误哈希回滚
+
+1. 在 VPS 上临时改 `web/releases/manifest.json` 里探针文件的 `sha256` 为错误值
+2. 把绿色包版本改回 `20260820`（或删 `state.json` 后改版本文件），再启动
+3. 点「是」更新 → 应提示失败并已恢复，原文件未被破坏
+4. 改回正确 manifest 后再测一次成功路径
+
+### E3. 真文件热更（探针通过后）
+
+1. 把新版 `lianhuan_login.py` 等复制到 `web/releases/files/`（路径即 `internal/app/` 相对路径）
+2. 发版号如 `20260820.3`，重新 `build_release_manifest.py` → git pull → 后台保存版本
+3. 客户端（版本落后）启动应提示并更新
+
+**白名单规则**：仅允许写入 `internal/app/` 下相对路径；禁止 `..`、绝对路径、`.assets/models/`、`runtime/`。
 
 ---
 

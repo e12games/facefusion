@@ -1,0 +1,3 @@
+LianHuan hot-update probe.
+Version: 20260820.2
+If you see this file under internal/app, the update pipeline works.

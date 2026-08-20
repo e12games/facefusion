@@ -15,27 +15,13 @@ from lianhuan_client import (
 	app_dir,
 	fetch_json,
 	http_request,
+	is_allowed_update_path,
 	package_root,
 	read_local_version,
+	resolve_update_target,
 	update_dir,
 	version_gt
 )
-
-
-BLOCKED_PREFIXES = (
-	'.assets/models/',
-	'.assets\\models\\',
-)
-
-
-def is_allowed_path(relative : str) -> bool:
-	relative = relative.replace('\\', '/').lstrip('/')
-	if not relative or relative.startswith('..'):
-		return False
-	for blocked in BLOCKED_PREFIXES:
-		if relative.startswith(blocked):
-			return False
-	return True
 
 
 def sha256_file(path : Path) -> str:
@@ -109,13 +95,16 @@ def apply_manifest(manifest : dict, app_path : Path, work_dir : Path) -> None:
 	backed_up : list[tuple[Path, str]] = []
 	try:
 		for item in files:
-			relative = str(item.get('path') or '').replace('\\', '/').lstrip('/')
-			if not is_allowed_path(relative):
+			relative = str(item.get('path') or '')
+			if not is_allowed_update_path(relative):
 				raise RuntimeError(f'不允许更新的路径：{relative}')
+			target = resolve_update_target(app_path, relative)
+			if target is None:
+				raise RuntimeError(f'不允许更新的路径：{relative}')
+			relative = relative.replace('\\', '/').lstrip('/')
 			expected_hash = str(item.get('sha256') or '').lower()
 			expected_size = int(item.get('size') or 0)
 			url = str(item.get('url') or f'{base}/releases/files/{relative}')
-			target = app_path / relative.replace('/', '\\')
 			pending = pending_root / relative.replace('/', '\\')
 			download_file(url, pending)
 			actual_hash = sha256_file(pending)
@@ -130,7 +119,9 @@ def apply_manifest(manifest : dict, app_path : Path, work_dir : Path) -> None:
 
 		for item in files:
 			relative = str(item.get('path') or '').replace('\\', '/').lstrip('/')
-			target = app_path / relative.replace('/', '\\')
+			target = resolve_update_target(app_path, relative)
+			if target is None:
+				raise RuntimeError(f'不允许更新的路径：{relative}')
 			staged = staging_root / relative.replace('/', '\\')
 			backup_file(target, backup_root, relative)
 			target.parent.mkdir(parents = True, exist_ok = True)

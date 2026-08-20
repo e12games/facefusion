@@ -15,6 +15,46 @@ TIMEOUT = 30
 VERSION_RE = re.compile(r'^(\d{8})(?:\.(\d+))?$')
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) LianHuan/1'
 
+# 热更新路径均相对 internal/app（便携包）或开发目录根；禁止模型目录与路径穿越。
+BLOCKED_UPDATE_PREFIXES = (
+	'.assets/models/',
+	'.assets\\models\\',
+	'runtime/',
+	'runtime\\',
+)
+
+
+def normalize_update_path(relative : str) -> str:
+	return relative.replace('\\', '/').lstrip('/')
+
+
+def is_allowed_update_path(relative : str) -> bool:
+	relative = normalize_update_path(relative)
+	if not relative:
+		return False
+	if relative.startswith('/') or re.match(r'^[A-Za-z]:', relative):
+		return False
+	parts = relative.split('/')
+	if any(part in ('', '.', '..') for part in parts):
+		return False
+	for blocked in BLOCKED_UPDATE_PREFIXES:
+		if relative.startswith(blocked.replace('\\', '/')):
+			return False
+	return True
+
+
+def resolve_update_target(app_path : Path, relative : str) -> Path | None:
+	if not is_allowed_update_path(relative):
+		return None
+	relative = normalize_update_path(relative)
+	target = (app_path / relative.replace('/', os.sep)).resolve()
+	app_root = app_path.resolve()
+	try:
+		target.relative_to(app_root)
+	except ValueError:
+		return None
+	return target
+
 
 def package_root() -> Path:
 	start = Path(__file__).resolve().parent

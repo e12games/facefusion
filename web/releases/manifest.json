@@ -1,6 +1,12 @@
 {
-  "version": "20260820",
+  "version": "20260820.2",
   "force": false,
-  "notes": "初始版本。",
-  "files": []
+  "notes": "探针测试：验证热更新管道。",
+  "files": [
+    {
+      "path": "lianhuan_probe.txt",
+      "sha256": "0dcc3ca51204fcdcc0df3b91fcc5359882275420fbd40f14a591675f5708e31c",
+      "size": 115
+    }
+  ]
 }

@@ -15,4 +15,12 @@ web/data
 web/config.json
 web/releases/files/*
 !web/releases/files/.gitkeep
+!web/releases/files/*.py
+!web/releases/files/*.txt
+!web/releases/files/*.json
+!web/releases/files/*.ini
+!web/releases/files/*.bat
+!web/releases/files/*.html
+!web/releases/files/*.css
+!web/releases/files/*.js
 *.pyc

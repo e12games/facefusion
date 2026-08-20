@@ -15,6 +15,30 @@ MANIFEST_PATH = RELEASES_DIR / 'manifest.json'
 FILES_DIR = RELEASES_DIR / 'files'
 VERSION_RE = re.compile(r'^(\d{8})(?:\.(\d+))?$')
 
+BLOCKED_UPDATE_PREFIXES = (
+	'.assets/models/',
+	'runtime/',
+)
+
+
+def normalize_update_path(relative : str) -> str:
+	return relative.replace('\\', '/').lstrip('/')
+
+
+def is_allowed_update_path(relative : str) -> bool:
+	relative = normalize_update_path(relative)
+	if not relative:
+		return False
+	if relative.startswith('/') or re.match(r'^[A-Za-z]:', relative):
+		return False
+	parts = relative.split('/')
+	if any(part in ('', '.', '..') for part in parts):
+		return False
+	for blocked in BLOCKED_UPDATE_PREFIXES:
+		if relative.startswith(blocked):
+			return False
+	return True
+
 
 def default_version() -> str:
 	return datetime.now(timezone.utc).strftime('%Y%m%d')
@@ -72,7 +96,7 @@ def manifest_for_client(current : str, base_url : str, update_enabled : bool) ->
 		if not isinstance(item, dict):
 			continue
 		relative = str(item.get('path') or '').replace('\\', '/').lstrip('/')
-		if not relative:
+		if not relative or not is_allowed_update_path(relative):
 			continue
 		file_path = FILES_DIR / relative.replace('/', '\\')
 		if not file_path.is_file():

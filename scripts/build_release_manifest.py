@@ -11,6 +11,30 @@ ROOT = Path(__file__).resolve().parent.parent
 FILES_DIR = ROOT / 'web' / 'releases' / 'files'
 MANIFEST_PATH = ROOT / 'web' / 'releases' / 'manifest.json'
 
+BLOCKED_UPDATE_PREFIXES = (
+	'.assets/models/',
+	'runtime/',
+)
+
+
+def normalize_update_path(relative : str) -> str:
+	return relative.replace('\\', '/').lstrip('/')
+
+
+def is_allowed_update_path(relative : str) -> bool:
+	relative = normalize_update_path(relative)
+	if not relative:
+		return False
+	if relative.startswith('/') or __import__('re').match(r'^[A-Za-z]:', relative):
+		return False
+	parts = relative.split('/')
+	if any(part in ('', '.', '..') for part in parts):
+		return False
+	for blocked in BLOCKED_UPDATE_PREFIXES:
+		if relative.startswith(blocked):
+			return False
+	return True
+
 
 def sha256_file(path : Path) -> str:
 	digest = hashlib.sha256()
@@ -27,6 +51,11 @@ def build(version : str, notes : str) -> dict:
 			if not path.is_file():
 				continue
 			relative = path.relative_to(FILES_DIR).as_posix()
+			if path.name.startswith('.'):
+				continue
+			if not is_allowed_update_path(relative):
+				print(f'跳过不允许的路径：{relative}', file = sys.stderr)
+				continue
 			files.append({
 				'path': relative,
 				'sha256': sha256_file(path),
