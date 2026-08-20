@@ -8,9 +8,9 @@ import json
 import shutil
 import sys
 from pathlib import Path
+from typing import Any
 
 from lianhuan_client import (
-	TIMEOUT,
 	api_base,
 	app_dir,
 	fetch_json,
@@ -47,6 +47,13 @@ def save_state(state_path : Path, version : str) -> None:
 	state_path.write_text(json.dumps(payload, ensure_ascii = False, indent = 2), encoding = 'utf-8')
 
 
+def read_current_version(app_path : Path, state_path : Path) -> str:
+	current = read_local_version(app_path)
+	if load_state(state_path).get('version'):
+		current = str(load_state(state_path).get('version'))
+	return current
+
+
 def ask_update(latest : str, notes : str) -> bool:
 	try:
 		import tkinter as tk
@@ -56,12 +63,36 @@ def ask_update(latest : str, notes : str) -> bool:
 		message = f'发现新版本 {latest}。'
 		if notes.strip():
 			message += f'\n\n{notes.strip()}'
-		message += '\n\n是否现在更新？（不强制，选「否」可继续启动）'
+		message += '\n\n是否现在更新？（不强制，选「否」可继续）'
 		answer = messagebox.askyesno('脸幻 · 更新', message)
 		root.destroy()
 		return answer
 	except Exception:
 		return False
+
+
+def show_info(message : str) -> None:
+	try:
+		import tkinter as tk
+		from tkinter import messagebox
+		root = tk.Tk()
+		root.withdraw()
+		messagebox.showinfo('脸幻 · 更新', message)
+		root.destroy()
+	except Exception:
+		print(message)
+
+
+def show_error(message : str) -> None:
+	try:
+		import tkinter as tk
+		from tkinter import messagebox
+		root = tk.Tk()
+		root.withdraw()
+		messagebox.showerror('脸幻 · 更新', message)
+		root.destroy()
+	except Exception:
+		print(message, file = sys.stderr)
 
 
 def download_file(url : str, dest : Path) -> None:
@@ -81,7 +112,7 @@ def apply_manifest(manifest : dict, app_path : Path, work_dir : Path) -> None:
 	files = manifest.get('files') or []
 	version = str(manifest.get('version') or '').strip()
 	if not version or not files:
-		return
+		raise RuntimeError('没有可更新的文件。')
 	backup_root = work_dir / 'backup' / version
 	staging_root = work_dir / 'staging' / version
 	pending_root = work_dir / 'pending' / version
@@ -139,51 +170,73 @@ def apply_manifest(manifest : dict, app_path : Path, work_dir : Path) -> None:
 		shutil.rmtree(staging_root, ignore_errors = True)
 
 
-def show_error(message : str) -> None:
-	try:
-		import tkinter as tk
-		from tkinter import messagebox
-		root = tk.Tk()
-		root.withdraw()
-		messagebox.showerror('脸幻 · 更新', message)
-		root.destroy()
-	except Exception:
-		print(message, file = sys.stderr)
+def check_update_status() -> dict[str, Any]:
+	root = package_root()
+	app_path = app_dir(root)
+	state_path = update_dir(root) / 'state.json'
+	current = read_current_version(app_path, state_path)
+	code, version_info = fetch_json('/api/version')
+	status : dict[str, Any] = {
+		'ok': code == 200 and version_info.get('ok', True),
+		'current': current,
+		'latest': '',
+		'notes': '',
+		'update_enabled': bool(version_info.get('update_enabled', True)),
+		'update_on_startup': bool(version_info.get('update_on_startup', True)),
+		'available': False,
+		'files_count': 0,
+		'manifest': {}
+	}
+	if not status['ok']:
+		status['reason'] = '连不上更新服务器。'
+		return status
+	if not status['update_enabled']:
+		status['reason'] = '管理员已关闭客户端在线更新。'
+		return status
+	latest = str(version_info.get('version') or version_info.get('recommended_version') or '').strip()
+	notes = str(version_info.get('notes') or '')
+	status['latest'] = latest
+	status['notes'] = notes
+	if not latest or not version_gt(latest, current):
+		return status
+	code, manifest = fetch_json(f'/api/update/manifest?current={current}')
+	if code != 200:
+		status['reason'] = '无法获取更新清单。'
+		return status
+	files = manifest.get('files') or []
+	status['manifest'] = manifest
+	status['files_count'] = len(files)
+	status['available'] = bool(files)
+	if not files:
+		status['reason'] = '服务器暂无增量文件。'
+	return status
 
 
-def main() -> int:
+def run_update_flow(*, interactive : bool = True, manual : bool = False) -> int:
 	root = package_root()
 	app_path = app_dir(root)
 	work_dir = update_dir(root)
 	work_dir.mkdir(parents = True, exist_ok = True)
 	state_path = work_dir / 'state.json'
 
-	current = read_local_version(app_path)
-	if load_state(state_path).get('version'):
-		current = str(load_state(state_path).get('version'))
-
-	if '--check-only' in sys.argv:
-		code, body = fetch_json('/api/version')
-		print(json.dumps({'local': current, 'remote': body, 'status': code}, ensure_ascii = False))
-		return 0 if code else 1
-
-	code, version_info = fetch_json('/api/version')
-	if code != 200 or not version_info.get('ok', True):
+	status = check_update_status()
+	if not status.get('ok'):
+		if manual or interactive:
+			show_error(str(status.get('reason') or '检查更新失败。'))
+		return 1 if manual else 0
+	if not status.get('update_enabled'):
+		if manual:
+			show_info('管理员已关闭在线更新。')
 		return 0
-	if not version_info.get('update_enabled', True):
+	if not status.get('available'):
+		if manual:
+			show_info(f"已是最新版本（{status.get('current')}）。")
 		return 0
-
-	latest = str(version_info.get('version') or version_info.get('recommended_version') or '').strip()
-	notes = str(version_info.get('notes') or '')
-	if not latest or not version_gt(latest, current):
+	latest = str(status.get('latest') or '')
+	notes = str(status.get('notes') or '')
+	manifest = status.get('manifest') or {}
+	if interactive and not ask_update(latest, notes or str(manifest.get('notes') or '')):
 		return 0
-
-	code, manifest = fetch_json(f'/api/update/manifest?current={current}')
-	if code != 200 or not manifest.get('files'):
-		return 0
-	if not ask_update(latest, notes or str(manifest.get('notes') or '')):
-		return 0
-
 	try:
 		apply_manifest(manifest, app_path, work_dir)
 		save_state(state_path, latest)
@@ -192,7 +245,26 @@ def main() -> int:
 	except Exception as error:
 		show_error(f'更新失败，已尝试恢复。\n{error}')
 		return 1
+	if manual:
+		show_info(f'更新完成，当前版本 {latest}。')
 	return 0
+
+
+def main() -> int:
+	manual = '--manual' in sys.argv
+	if '--check-only' in sys.argv:
+		status = check_update_status()
+		print(json.dumps(status, ensure_ascii = False))
+		return 0 if status.get('ok') else 1
+	if not manual:
+		code, version_info = fetch_json('/api/version')
+		if code != 200 or not version_info.get('ok', True):
+			return 0
+		if not version_info.get('update_enabled', True):
+			return 0
+		if not version_info.get('update_on_startup', True):
+			return 0
+	return run_update_flow(interactive = True, manual = manual)
 
 
 if __name__ == '__main__':

@@ -18,6 +18,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from update_service import default_version, load_manifest, manifest_for_client, save_manifest, version_payload
 from payment_service import normalize_tx_hash, verify_trc20_usdt, wallet_qr_svg, SUPPORT_TELEGRAM
+from web_deploy_service import apply_web_update, check_web_update, git_status, read_log_tail
 
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / 'data'
@@ -117,6 +118,7 @@ def init_db() -> None:
 			'app_version': default_version(),
 			'release_notes': '',
 			'update_enabled': '1',
+			'client_update_on_startup': '1',
 			'usdt_trc20_wallet': '',
 			'membership_price_usdt': '20',
 			'admin_password_changed': '0',
@@ -449,12 +451,15 @@ def admin_page(request : Request):
 				'''
 			).fetchall()
 		]
+	flash = str(request.session.pop('admin_flash', '') or '')
+	web_git = git_status(fetch = True)
 	return render(request, 'admin.html', {
 		'users': users,
-		'message': '',
+		'message': flash,
 		'app_version': setting('app_version', default_version()),
 		'release_notes': setting('release_notes', ''),
 		'update_enabled': setting('update_enabled', '1') == '1',
+		'client_update_on_startup': setting('client_update_on_startup', '1') == '1',
 		'trial_enabled': setting('trial_enabled') == '1',
 		'register_code_required': register_code_required(),
 		'register_code': setting('register_code', ''),
@@ -463,8 +468,30 @@ def admin_page(request : Request):
 		'manifest_files': len(manifest.get('files') or []),
 		'usdt_trc20_wallet': setting('usdt_trc20_wallet', ''),
 		'membership_price_usdt': setting('membership_price_usdt', '20'),
-		'orders': pending_orders
+		'orders': pending_orders,
+		'web_git': web_git,
+		'web_update_log': read_log_tail()
 	})
+
+
+@app.post('/admin/web-update/check')
+def admin_web_update_check(request : Request):
+	user = current_user(request)
+	if not user or not user['is_admin']:
+		return RedirectResponse('/login', status_code = 303)
+	result = check_web_update()
+	request.session['admin_flash'] = result.get('message') or result.get('reason') or '检查完成。'
+	return RedirectResponse('/admin', status_code = 303)
+
+
+@app.post('/admin/web-update/apply')
+def admin_web_update_apply(request : Request):
+	user = current_user(request)
+	if not user or not user['is_admin']:
+		return RedirectResponse('/login', status_code = 303)
+	result = apply_web_update()
+	request.session['admin_flash'] = result.get('message') or result.get('reason') or '已提交更新。'
+	return RedirectResponse('/admin', status_code = 303)
 
 
 @app.post('/admin/trial')
@@ -607,6 +634,7 @@ def admin_release(
 	app_version : str = Form(...),
 	release_notes : str = Form(''),
 	update_enabled : Optional[str] = Form(None),
+	client_update_on_startup : Optional[str] = Form(None),
 	sync_manifest : Optional[str] = Form(None)
 ):
 	user = current_user(request)
@@ -618,6 +646,7 @@ def admin_release(
 	set_setting('app_version', version)
 	set_setting('release_notes', release_notes.strip())
 	set_setting('update_enabled', '1' if update_enabled else '0')
+	set_setting('client_update_on_startup', '1' if client_update_on_startup else '0')
 	if sync_manifest:
 		manifest = load_manifest()
 		manifest['version'] = version
@@ -632,7 +661,8 @@ def api_version():
 	return version_payload(
 		setting('app_version', default_version()),
 		setting('release_notes', ''),
-		setting('update_enabled', '1') == '1'
+		setting('update_enabled', '1') == '1',
+		setting('client_update_on_startup', '1') == '1'
 	)
 
 

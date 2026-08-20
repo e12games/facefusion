@@ -61,6 +61,7 @@ PORT="${LIANHUAN_PORT:-8092}"
 exec /opt/lianhuan/venv/bin/uvicorn app:app --host 127.0.0.1 --port "$PORT" --proxy-headers --forwarded-allow-ips='*'
 EOF
 chmod +x "$APP/deploy/start.sh"
+chmod +x "$APP/deploy/web-self-update.sh" 2>/dev/null || true
 
 log "写入 systemd：$SERVICE"
 cat > "/etc/systemd/system/${SERVICE}.service" << EOF

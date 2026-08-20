@@ -112,7 +112,12 @@ def manifest_for_client(current : str, base_url : str, update_enabled : bool) ->
 	return payload
 
 
-def version_payload(app_version : str, release_notes : str, update_enabled : bool) -> dict[str, Any]:
+def version_payload(
+	app_version : str,
+	release_notes : str,
+	update_enabled : bool,
+	update_on_startup : bool = True
+) -> dict[str, Any]:
 	manifest = load_manifest()
 	latest = app_version or str(manifest.get('version') or default_version())
 	return {
@@ -121,5 +126,6 @@ def version_payload(app_version : str, release_notes : str, update_enabled : boo
 		'recommended_version': latest,
 		'force': False,
 		'notes': release_notes or str(manifest.get('notes') or ''),
-		'update_enabled': update_enabled
+		'update_enabled': update_enabled,
+		'update_on_startup': update_on_startup
 	}

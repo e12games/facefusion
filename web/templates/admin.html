@@ -14,6 +14,31 @@
 
 	<p class="hint"><a href="/admin/password">修改管理员密码</a></p>
 
+	{% if message %}<p class="ok">{{ message }}</p>{% endif %}
+
+	<h2>WEB 在线更新</h2>
+	{% if web_git.deployable %}
+	<p class="hint">
+		部署目录：<code>{{ web_git.app_root }}</code><br>
+		当前 commit：<strong>{{ web_git.local_commit }}</strong> ·
+		远程 <strong>{{ web_git.remote_commit }}</strong>（{{ web_git.branch }}）
+		{% if web_git.update_available %} · <strong>有新版本</strong>{% else %} · 已同步{% endif %}
+		{% if web_git.locked %} · <strong>更新进行中</strong>{% endif %}
+	</p>
+	<form method="post" action="/admin/web-update/check" style="display:inline">
+		<button class="btn" type="submit">检查 WEB 更新</button>
+	</form>
+	<form method="post" action="/admin/web-update/apply" style="display:inline;margin-left:8px" onsubmit="return confirm('将从 GitHub 拉取最新代码并重启 WEB 服务（约 10–30 秒中断）。继续？');">
+		<button class="btn" type="submit">拉取并重启 WEB</button>
+	</form>
+	<p class="hint">等价于 VPS 执行 git pull + pip install + systemctl restart。</p>
+	{% if web_update_log %}
+	<pre class="log-box">{{ web_update_log }}</pre>
+	{% endif %}
+	{% else %}
+	<p class="hint">{{ web_git.reason or '当前不是 Git 部署环境，请在 VPS 上使用。' }}</p>
+	{% endif %}
+
 	<h2>USDT 会员收款（TRC20）</h2>
 	<form class="switch" method="post" action="/admin/payment">
 		<label>收款地址（TRC20）<input type="text" name="usdt_trc20_wallet" value="{{ usdt_trc20_wallet }}" placeholder="T..." autocomplete="off"></label>
@@ -47,7 +72,7 @@
 		</tbody>
 	</table>
 
-	<h2>版本与更新</h2>
+	<h2>客户端热更新</h2>
 	<p class="hint">版本号格式 YYYYMMDD，同日再发用 20260820.2。不强制升级；客户端可跳过。</p>
 	<form class="switch" method="post" action="/admin/release">
 		<label>当前版本<input type="text" name="app_version" value="{{ app_version }}" required pattern="\d{8}(\.\d+)?"></label>
@@ -57,10 +82,15 @@
 			<span>允许客户端在线更新</span>
 		</label>
 		<label class="toggle">
+			<input type="checkbox" name="client_update_on_startup" value="1" {% if client_update_on_startup %}checked{% endif %}>
+			<span>客户端启动时自动检查更新</span>
+		</label>
+		<label class="toggle">
 			<input type="checkbox" name="sync_manifest" value="1">
 			<span>同时写 manifest.json 版本号</span>
 		</label>
-		<p class="hint">manifest：{{ manifest_version }} · {{ manifest_files }} 个文件 · 上传目录 <code>web/releases/files/</code>（路径对应 <code>internal/app/</code>）</p>
+		<p class="hint">manifest：{{ manifest_version }} · {{ manifest_files }} 个文件 · 登录窗另有「检查更新」按钮</p>
+		<p class="hint">上传目录 <code>web/releases/files/</code>（路径对应 <code>internal/app/</code>）</p>
 		<button class="btn" type="submit">保存发版</button>
 	</form>
 

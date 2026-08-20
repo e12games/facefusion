@@ -53,7 +53,7 @@ class LoginApp:
 		self.root = tk.Tk()
 		self.root.title('脸幻')
 		self.root.resizable(False, False)
-		self.root.geometry('420x390')
+		self.root.geometry('420x430')
 		pad = ttk.Frame(self.root, padding = 20)
 		pad.pack(fill = 'both', expand = True)
 
@@ -81,6 +81,7 @@ class LoginApp:
 		self.password = ttk.Entry(pad, show = '*')
 		self.password.pack(fill = 'x', pady = 4)
 		ttk.Button(pad, text = '账号登录', command = self.login).pack(fill = 'x', pady = (8, 4))
+		ttk.Button(pad, text = '检查更新', command = self.check_update).pack(fill = 'x', pady = (4, 0))
 
 		self.status = ttk.Label(pad, text = '', foreground = '#8a160f', wraplength = 360)
 		self.status.pack(anchor = 'w', pady = (12, 0))
@@ -104,6 +105,17 @@ class LoginApp:
 			self.succeed()
 			return
 		self.set_status(str(body.get('reason') or '试用不可用。'))
+
+	def check_update(self) -> None:
+		self.set_status('正在检查更新…')
+		self.root.update_idletasks()
+		try:
+			from lianhuan_update import run_update_flow
+			run_update_flow(interactive = True, manual = True)
+		except Exception as error:
+			self.set_status(f'检查更新失败：{error}')
+			return
+		self.set_status('')
 
 	def login(self) -> None:
 		email = self.email.get().strip()
