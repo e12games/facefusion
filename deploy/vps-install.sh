@@ -26,6 +26,10 @@ if [[ "$(id -u)" -ne 0 ]]; then
 	die "请用 root 运行： sudo bash $0"
 fi
 
+git config --global --add safe.directory "$APP" 2>/dev/null || true
+git -C "$APP" checkout -- deploy/start.sh 2>/dev/null || true
+git -C "$APP" reset --hard HEAD 2>/dev/null || true
+
 log "安装系统依赖"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq

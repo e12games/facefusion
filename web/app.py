@@ -11,9 +11,9 @@ from secrets import token_hex
 from typing import Any, Optional
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 from starlette.middleware.sessions import SessionMiddleware
 
 from update_service import default_version, load_manifest, manifest_for_client, save_manifest, version_payload
@@ -33,7 +33,10 @@ app.add_middleware(SessionMiddleware, secret_key = SECRET, session_cookie = 'lia
 app.mount('/static', StaticFiles(directory = str(ROOT / 'static')), name = 'static')
 if RELEASES_DIR.is_dir():
 	app.mount('/releases', StaticFiles(directory = str(RELEASES_DIR)), name = 'releases')
-templates = Jinja2Templates(directory = str(ROOT / 'templates'))
+jinja_env = Environment(
+	loader = FileSystemLoader(str(ROOT / 'templates')),
+	autoescape = select_autoescape(['html', 'xml'])
+)
 
 
 def row_dict(row : Optional[sqlite3.Row]) -> Optional[dict[str, Any]]:
@@ -151,7 +154,8 @@ def render(request : Request, name : str, extra : Optional[dict[str, Any]] = Non
 	}
 	if extra:
 		payload.update(extra)
-	return templates.TemplateResponse(name, payload)
+	html = jinja_env.get_template(name).render(**payload)
+	return HTMLResponse(html)
 
 
 def mark_user_paid(user_id : int) -> None:
