@@ -7,14 +7,14 @@
 
 	<div class="price-box">
 		<p class="eyebrow">会员价格</p>
-		<p class="price">{{ price }} USDT</p>
+		<p class="price">{{ price }} USDT<span class="price-unit">/月</span></p>
 	</div>
 
 	{% if not wallet %}
 	<p class="error">收款地址尚未配置，请稍后再试。</p>
 	{% else %}
 	<ol class="pay-steps">
-		<li>打开钱包（支持 TRC20 USDT），<strong>扫码或复制</strong>下面地址，转账 <strong>{{ price }} USDT</strong>。</li>
+		<li>打开钱包（支持 TRC20 USDT），<strong>扫码或复制</strong>下面地址，转账 <strong>{{ price }} USDT</strong>（购买 1 个月会员）。</li>
 		<li>网络务必选择 <strong>TRC20 / Tron</strong>，不要选 ERC20、BEP20。</li>
 		<li>转账成功后，复制链上 <strong>交易哈希（TxID）</strong>，在下方提交。</li>
 	</ol>

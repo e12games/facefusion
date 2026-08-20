@@ -151,6 +151,7 @@ input[type="email"]:focus, input[type="password"]:focus {
 .buy-card { max-width: 640px; }
 .price-box { margin: 20px 0; padding: 16px; border: 1px solid var(--line); background: rgba(255,255,255,0.02); }
 .price { font-size: 32px; margin: 4px 0 0; font-weight: 700; }
+.price-unit { font-size: 18px; font-weight: 600; margin-left: 2px; color: var(--muted); }
 .pay-steps { padding-left: 20px; }
 .wallet-pay { display: flex; gap: 20px; align-items: flex-start; margin: 16px 0; flex-wrap: wrap; }
 .wallet-qr { flex: 0 0 auto; padding: 10px; background: #fff; border-radius: 8px; border: 1px solid var(--line); line-height: 0; }

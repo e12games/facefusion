@@ -114,7 +114,7 @@ def init_db() -> None:
 			'release_notes': '',
 			'update_enabled': '1',
 			'usdt_trc20_wallet': '',
-			'membership_price_usdt': '29',
+			'membership_price_usdt': '20',
 			'admin_password_changed': '0'
 		}
 		for key, value in defaults.items():
@@ -163,7 +163,7 @@ def render(request : Request, name : str, extra : Optional[dict[str, Any]] = Non
 		'request': request,
 		'user': user,
 		'trial_enabled': setting('trial_enabled') == '1',
-		'membership_price_usdt': setting('membership_price_usdt', '29'),
+		'membership_price_usdt': setting('membership_price_usdt', '20'),
 		'need_password_hint': bool(user and user.get('is_admin') and needs_password_hint()),
 		'default_admin_email': DEFAULT_ADMIN_EMAIL
 	}
@@ -266,7 +266,7 @@ def buy_page(request : Request):
 	if user['is_admin'] or user['is_paid']:
 		return RedirectResponse('/', status_code = 303)
 	wallet = setting('usdt_trc20_wallet', '')
-	price = setting('membership_price_usdt', '29')
+	price = setting('membership_price_usdt', '20')
 	with closing(get_db()) as connection:
 		orders = [
 			dict(row) for row in connection.execute(
@@ -293,7 +293,7 @@ def buy_submit(request : Request, tx_hash : str = Form(...)):
 	if user['is_admin'] or user['is_paid']:
 		return RedirectResponse('/', status_code = 303)
 	wallet = setting('usdt_trc20_wallet', '').strip()
-	price = setting('membership_price_usdt', '29').strip() or '29'
+	price = setting('membership_price_usdt', '20').strip() or '20'
 	tx_hash_norm = normalize_tx_hash(tx_hash)
 	error = ''
 	message = ''
@@ -369,7 +369,7 @@ def admin_page(request : Request):
 		'manifest_version': manifest.get('version', ''),
 		'manifest_files': len(manifest.get('files') or []),
 		'usdt_trc20_wallet': setting('usdt_trc20_wallet', ''),
-		'membership_price_usdt': setting('membership_price_usdt', '29'),
+		'membership_price_usdt': setting('membership_price_usdt', '20'),
 		'orders': pending_orders
 	})
 
@@ -398,17 +398,17 @@ def admin_paid(request : Request, user_id : int, is_paid : str = Form(...)):
 def admin_payment(
 	request : Request,
 	usdt_trc20_wallet : str = Form(''),
-	membership_price_usdt : str = Form('29')
+	membership_price_usdt : str = Form('20')
 ):
 	user = current_user(request)
 	if not user or not user['is_admin']:
 		return RedirectResponse('/login', status_code = 303)
 	set_setting('usdt_trc20_wallet', usdt_trc20_wallet.strip())
-	price = membership_price_usdt.strip() or '29'
+	price = membership_price_usdt.strip() or '20'
 	try:
 		Decimal(price)
 	except Exception:
-		price = '29'
+		price = '20'
 	set_setting('membership_price_usdt', price)
 	return RedirectResponse('/admin', status_code = 303)
 
