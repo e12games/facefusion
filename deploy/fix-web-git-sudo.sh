@@ -34,6 +34,7 @@ chown -R www-data:www-data "$RELEASES"
 
 grep -q '^LIANHUAN_RELEASES_DIR=' "$ENV_FILE" 2>/dev/null || echo "LIANHUAN_RELEASES_DIR=$RELEASES" >>"$ENV_FILE"
 grep -q '^LIANHUAN_RELEASES_REPO=' "$ENV_FILE" 2>/dev/null || echo "LIANHUAN_RELEASES_REPO=$RELEASES_REPO" >>"$ENV_FILE"
+grep -q '^LIANHUAN_RELEASES_RAW_BASE=' "$ENV_FILE" 2>/dev/null || echo "LIANHUAN_RELEASES_RAW_BASE=https://raw.githubusercontent.com/e12games/facefusion-releases/main" >>"$ENV_FILE"
 
 systemctl restart lianhuan-web
 echo "OK: WEB 更新 sudo + 发布包 $RELEASES 已就绪"

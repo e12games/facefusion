@@ -128,6 +128,9 @@ fi
 if ! grep -q '^LIANHUAN_RELEASES_REPO=' "$ENV_FILE" 2>/dev/null; then
 	echo "LIANHUAN_RELEASES_REPO=$RELEASES_REPO" >> "$ENV_FILE"
 fi
+if ! grep -q '^LIANHUAN_RELEASES_RAW_BASE=' "$ENV_FILE" 2>/dev/null; then
+	echo "LIANHUAN_RELEASES_RAW_BASE=https://raw.githubusercontent.com/e12games/facefusion-releases/main" >> "$ENV_FILE"
+fi
 
 log "创建 Python 虚拟环境"
 if [[ ! -x "$VENV/bin/pip" ]]; then

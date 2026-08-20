@@ -1,34 +1,31 @@
 #!/usr/bin/env python3
-"""公开仓 facefusion-releases：检查与拉取（无需 GitHub Token）。"""
+"""公开仓 facefusion-releases：HTTP 检查 + 可选本地 git 缓存。"""
 from __future__ import annotations
 
+import json
 import os
 import subprocess
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
-DEFAULT_RELEASES_REPO = 'https://github.com/e12games/facefusion-releases.git'
+from update_service import (
+	fetch_remote_manifest,
+	load_manifest_local,
+	releases_dir,
+	releases_raw_base,
+	releases_repo_url
+)
+
 DEFAULT_BRANCH = 'main'
 LOG_PATH = Path(__file__).resolve().parent / 'data' / 'releases_pull.log'
-
-
-def releases_repo_url() -> str:
-	return os.environ.get('LIANHUAN_RELEASES_REPO', DEFAULT_RELEASES_REPO).strip() or DEFAULT_RELEASES_REPO
+FETCH_UA = 'Mozilla/5.0 (compatible; LianHuan/1)'
 
 
 def releases_branch() -> str:
 	return os.environ.get('LIANHUAN_RELEASES_BRANCH', DEFAULT_BRANCH).strip() or DEFAULT_BRANCH
-
-
-def releases_root() -> Path:
-	env = os.environ.get('LIANHUAN_RELEASES_DIR', '').strip()
-	if env:
-		return Path(env)
-	repo_root = Path(__file__).resolve().parent.parent / 'releases'
-	if repo_root.is_dir():
-		return repo_root
-	return Path('/opt/lianhuan/releases')
 
 
 def append_log(line : str) -> None:
@@ -56,69 +53,71 @@ def run_git(cwd : Path, args : list[str], timeout : int = 120) -> tuple[int, str
 	return result.returncode, output.strip()
 
 
+def remote_manifest_ok() -> tuple[bool, str, Optional[dict[str, Any]]]:
+	manifest = fetch_remote_manifest()
+	if manifest is None:
+		return False, '无法读取公开仓 manifest.json', None
+	version = str(manifest.get('version') or '')
+	files = len(manifest.get('files') or [])
+	return True, f'公开仓 manifest 版本 {version} · {files} 个文件', manifest
+
+
 def releases_status(fetch : bool = True) -> dict[str, Any]:
-	root = releases_root()
+	root = releases_dir()
 	repo = releases_repo_url()
-	branch = releases_branch()
-	if not (root / '.git').is_dir():
-		return {
-			'ok': True,
-			'deployable': True,
-			'cloned': False,
-			'repo': repo,
-			'root': str(root),
-			'branch': branch,
-			'local_commit': '—',
-			'remote_commit': '—',
-			'update_available': True,
-			'fetch_ok': True,
-			'message': '尚未 clone，可点「拉取发布包」初始化。'
-		}
-	_, local_out = run_git(root, ['rev-parse', '--short', 'HEAD'])
-	fetch_ok = True
-	fetch_detail = ''
-	if fetch:
-		fetch_code, fetch_detail = run_git(root, ['fetch', 'origin', branch])
-		fetch_ok = fetch_code == 0
-	_, remote_out = run_git(root, ['rev-parse', '--short', f'origin/{branch}'])
-	local = local_out.strip() or '?'
-	remote = remote_out.strip() if fetch_ok else '?'
-	update_available = fetch_ok and local != remote
+	raw = releases_raw_base()
+	ok, detail, manifest = remote_manifest_ok()
+	remote_version = str(manifest.get('version') or '—') if manifest else '—'
+	local_manifest = load_manifest_local()
+	local_version = str(local_manifest.get('version') or '—')
+	cloned = (root / '.git').is_dir()
+	local_commit = '—'
+	if cloned:
+		_, local_out = run_git(root, ['rev-parse', '--short', 'HEAD'])
+		local_commit = local_out.strip() or '—'
 	return {
 		'ok': True,
 		'deployable': True,
-		'cloned': True,
+		'cloned': cloned,
 		'repo': repo,
+		'raw_base': raw,
 		'root': str(root),
-		'branch': branch,
-		'local_commit': local,
-		'remote_commit': remote,
-		'update_available': update_available,
-		'fetch_ok': fetch_ok,
-		'fetch_detail': fetch_detail
+		'branch': releases_branch(),
+		'remote_version': remote_version,
+		'local_version': local_version,
+		'local_commit': local_commit,
+		'update_available': ok and remote_version not in ('—', local_version),
+		'fetch_ok': ok,
+		'fetch_detail': detail if ok else detail,
+		'remote_manifest_ok': ok
 	}
 
 
 def check_releases() -> dict[str, Any]:
 	status = releases_status(fetch = True)
-	if not status.get('fetch_ok') and status.get('cloned'):
-		status['message'] = f"无法连接发布仓：{status.get('fetch_detail') or 'fetch 失败'}"
-		return status
-	if not status.get('cloned'):
+	if not status.get('remote_manifest_ok'):
+		status['message'] = status.get('fetch_detail') or '无法连接公开仓'
 		return status
 	if status.get('update_available'):
-		status['message'] = f"发布包有新版本：{status['local_commit']} → {status['remote_commit']}"
+		status['message'] = (
+			f"公开仓有新版本：本地 {status['local_version']} → 远程 {status['remote_version']}"
+		)
 	else:
-		status['message'] = f"发布包已是最新（{status['local_commit']}）"
+		status['message'] = (
+			f"公开仓已就绪（{status['remote_version']}）· 源 {status['raw_base']}"
+		)
 	append_log('check: ' + status['message'])
 	return status
 
 
 def pull_releases() -> dict[str, Any]:
-	root = releases_root()
+	root = releases_dir()
 	repo = releases_repo_url()
 	branch = releases_branch()
 	root.parent.mkdir(parents = True, exist_ok = True)
+	ok, detail, manifest = remote_manifest_ok()
+	if not ok:
+		return {'ok': False, 'reason': detail}
 	if not (root / '.git').is_dir():
 		append_log(f'clone {repo} -> {root}')
 		result = subprocess.run(
@@ -132,7 +131,7 @@ def pull_releases() -> dict[str, Any]:
 		if result.returncode != 0:
 			append_log('clone failed: ' + output)
 			return {'ok': False, 'reason': output or 'clone 失败'}
-		msg = f'已 clone 发布包到 {root}'
+		msg = f'已 clone 到 {root}（客户端已可直接从 GitHub 拉取，本地缓存可选）'
 		append_log(msg)
 		return {'ok': True, 'message': msg}
 	code, fetch_out = run_git(root, ['fetch', 'origin', branch])
@@ -142,7 +141,7 @@ def pull_releases() -> dict[str, Any]:
 	if code != 0:
 		append_log('pull failed: ' + pull_out)
 		return {'ok': False, 'reason': pull_out or 'pull 失败'}
-	status = releases_status(fetch = False)
-	msg = f"发布包已更新（{status.get('local_commit')}）"
+	version = str(manifest.get('version') or '') if manifest else ''
+	msg = f'本地缓存已更新（{version}）'
 	append_log(msg)
 	return {'ok': True, 'message': msg}

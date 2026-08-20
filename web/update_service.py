@@ -1,22 +1,35 @@
 #!/usr/bin/env python3
-"""服务端：版本号、manifest 读取与组装。"""
+"""服务端：版本号、manifest 读取与组装（公开仓 facefusion-releases）。"""
 from __future__ import annotations
 
 import json
 import os
 import re
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import quote
 
 WEB_ROOT = Path(__file__).resolve().parent
 VERSION_RE = re.compile(r'^(\d{8})(?:\.(\d+))?$')
+DEFAULT_RELEASES_REPO = 'https://github.com/e12games/facefusion-releases.git'
+DEFAULT_RELEASES_RAW = 'https://raw.githubusercontent.com/e12games/facefusion-releases/main'
+FETCH_UA = 'Mozilla/5.0 (compatible; LianHuan/1)'
 
 BLOCKED_UPDATE_PREFIXES = (
 	'.assets/models/',
 	'runtime/',
 )
+
+
+def releases_repo_url() -> str:
+	return os.environ.get('LIANHUAN_RELEASES_REPO', DEFAULT_RELEASES_REPO).strip() or DEFAULT_RELEASES_REPO
+
+
+def releases_raw_base() -> str:
+	return os.environ.get('LIANHUAN_RELEASES_RAW_BASE', DEFAULT_RELEASES_RAW).strip().rstrip('/') or DEFAULT_RELEASES_RAW
 
 
 def releases_dir() -> Path:
@@ -26,8 +39,7 @@ def releases_dir() -> Path:
 	repo_releases = WEB_ROOT.parent / 'releases'
 	if repo_releases.is_dir():
 		return repo_releases
-	legacy = WEB_ROOT / 'releases'
-	return legacy
+	return Path('/opt/lianhuan/releases')
 
 
 def manifest_path() -> Path:
@@ -73,14 +85,7 @@ def version_gt(left : str, right : str) -> bool:
 	return parse_version(left) > parse_version(right)
 
 
-def load_manifest() -> dict[str, Any]:
-	path = manifest_path()
-	if not path.is_file():
-		return {'version': default_version(), 'force': False, 'notes': '', 'files': []}
-	try:
-		data = json.loads(path.read_text(encoding = 'utf-8'))
-	except Exception:
-		data = {}
+def normalize_manifest(data : Any) -> dict[str, Any]:
 	if not isinstance(data, dict):
 		data = {}
 	data.setdefault('version', default_version())
@@ -90,11 +95,44 @@ def load_manifest() -> dict[str, Any]:
 	return data
 
 
+def fetch_remote_manifest() -> Optional[dict[str, Any]]:
+	url = releases_raw_base() + '/manifest.json'
+	request = urllib.request.Request(url, headers = {'User-Agent': FETCH_UA})
+	try:
+		with urllib.request.urlopen(request, timeout = 20) as response:
+			return normalize_manifest(json.loads(response.read().decode('utf-8')))
+	except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, TimeoutError):
+		return None
+
+
+def load_manifest_local() -> dict[str, Any]:
+	path = manifest_path()
+	if not path.is_file():
+		return {'version': default_version(), 'force': False, 'notes': '', 'files': []}
+	try:
+		data = json.loads(path.read_text(encoding = 'utf-8'))
+	except Exception:
+		data = {}
+	return normalize_manifest(data)
+
+
+def load_manifest() -> dict[str, Any]:
+	remote = fetch_remote_manifest()
+	if remote is not None:
+		return remote
+	return load_manifest_local()
+
+
 def save_manifest(data : dict[str, Any]) -> None:
 	root = releases_dir()
 	root.mkdir(parents = True, exist_ok = True)
 	files_dir().mkdir(parents = True, exist_ok = True)
 	manifest_path().write_text(json.dumps(data, ensure_ascii = False, indent = 2) + '\n', encoding = 'utf-8')
+
+
+def file_download_url(relative : str, site_base_url : str) -> str:
+	relative = normalize_update_path(relative)
+	return releases_raw_base() + '/files/' + quote(relative, safe = '/')
 
 
 def manifest_for_client(current : str, base_url : str, update_enabled : bool) -> dict[str, Any]:
@@ -105,7 +143,8 @@ def manifest_for_client(current : str, base_url : str, update_enabled : bool) ->
 		'version': latest,
 		'force': False,
 		'notes': manifest.get('notes') or '',
-		'files': []
+		'files': [],
+		'releases_source': releases_raw_base()
 	}
 	if not update_enabled:
 		return payload
@@ -120,14 +159,16 @@ def manifest_for_client(current : str, base_url : str, update_enabled : bool) ->
 		if not relative or not is_allowed_update_path(relative):
 			continue
 		file_path = fdir / relative.replace('/', os.sep)
-		if not file_path.is_file():
+		size = int(item.get('size') or 0)
+		if not size and file_path.is_file():
+			size = file_path.stat().st_size
+		if not item.get('sha256') and not file_path.is_file():
 			continue
-		url = base_url.rstrip('/') + '/releases/files/' + quote(relative.replace('\\', '/'), safe = '/')
 		files.append({
 			'path': relative,
-			'sha256': item.get('sha256') or '',
-			'size': item.get('size') or file_path.stat().st_size,
-			'url': url
+			'sha256': str(item.get('sha256') or '').lower(),
+			'size': size,
+			'url': file_download_url(relative, base_url)
 		})
 	payload['files'] = files
 	return payload
@@ -148,5 +189,6 @@ def version_payload(
 		'force': False,
 		'notes': release_notes or str(manifest.get('notes') or ''),
 		'update_enabled': update_enabled,
-		'update_on_startup': update_on_startup
+		'update_on_startup': update_on_startup,
+		'releases_source': releases_raw_base()
 	}
