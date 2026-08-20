@@ -75,19 +75,18 @@
 
 	<h2>客户端发布包（公开仓）</h2>
 	<p class="hint">
-		更新源（公开，无需 Token）：<br>
-		<code>{{ releases_git.raw_base }}/manifest.json</code><br>
-		仓库：<a href="{{ releases_git.repo }}" target="_blank" rel="noopener">{{ releases_git.repo }}</a>
-		· 远程版本 <strong>{{ releases_git.remote_version }}</strong>
-		{% if releases_git.cloned %}· 本地缓存 {{ releases_git.local_version }}（{{ releases_git.local_commit }}）{% endif %}
+		公开仓：<a href="{{ releases_git.repo }}" target="_blank" rel="noopener">{{ releases_git.repo }}</a><br>
+		客户端下载：<code>{{ releases_git.raw_base }}/files/…</code><br>
+		远程版本 <strong>{{ releases_git.remote_version }}</strong>
+		{% if releases_git.cloned %}· VPS 缓存 {{ releases_git.local_version }}（{{ releases_git.local_commit }}）{% endif %}
 	</p>
 	<form method="post" action="/admin/releases/check" style="display:inline">
 		<button class="btn" type="submit">检查发布包</button>
 	</form>
 	<form method="post" action="/admin/releases/pull" style="display:inline;margin-left:8px">
-		<button class="btn" type="submit">同步本地缓存（可选）</button>
+		<button class="btn" type="submit">同步 VPS 缓存（可选）</button>
 	</form>
-	<p class="hint">客户端热更文件直接从 GitHub 公开仓下载；推送到 facefusion-releases 后无需 VPS git pull 即可生效。</p>
+	<p class="hint">客户端直接从 GitHub 公开仓下载，不走本站 /releases/。推送 facefusion-releases 后即可被客户端拉取。</p>
 
 	<h2>客户端热更新</h2>
 	<p class="hint">版本号格式 YYYYMMDD，同日再发用 20260820.2。不强制升级；客户端可跳过。</p>

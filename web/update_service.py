@@ -130,7 +130,8 @@ def save_manifest(data : dict[str, Any]) -> None:
 	manifest_path().write_text(json.dumps(data, ensure_ascii = False, indent = 2) + '\n', encoding = 'utf-8')
 
 
-def file_download_url(relative : str, site_base_url : str) -> str:
+def file_download_url(relative : str, site_base_url : str = '') -> str:
+	"""客户端一律从公开仓 GitHub Raw 下载，不走站点 /releases/。"""
 	relative = normalize_update_path(relative)
 	return releases_raw_base() + '/files/' + quote(relative, safe = '/')
 
@@ -144,7 +145,8 @@ def manifest_for_client(current : str, base_url : str, update_enabled : bool) ->
 		'force': False,
 		'notes': manifest.get('notes') or '',
 		'files': [],
-		'releases_source': releases_raw_base()
+		'releases_source': releases_raw_base(),
+		'releases_repo': releases_repo_url()
 	}
 	if not update_enabled:
 		return payload
@@ -158,17 +160,18 @@ def manifest_for_client(current : str, base_url : str, update_enabled : bool) ->
 		relative = str(item.get('path') or '').replace('\\', '/').lstrip('/')
 		if not relative or not is_allowed_update_path(relative):
 			continue
+		sha = str(item.get('sha256') or '').lower()
+		if not sha:
+			continue
 		file_path = fdir / relative.replace('/', os.sep)
 		size = int(item.get('size') or 0)
 		if not size and file_path.is_file():
 			size = file_path.stat().st_size
-		if not item.get('sha256') and not file_path.is_file():
-			continue
 		files.append({
 			'path': relative,
-			'sha256': str(item.get('sha256') or '').lower(),
+			'sha256': sha,
 			'size': size,
-			'url': file_download_url(relative, base_url)
+			'url': file_download_url(relative)
 		})
 	payload['files'] = files
 	return payload
@@ -190,5 +193,6 @@ def version_payload(
 		'notes': release_notes or str(manifest.get('notes') or ''),
 		'update_enabled': update_enabled,
 		'update_on_startup': update_on_startup,
-		'releases_source': releases_raw_base()
+		'releases_source': releases_raw_base(),
+		'releases_repo': releases_repo_url()
 	}

@@ -2,7 +2,9 @@
 
 版本号：**YYYYMMDD**（同日再发用 `20260820.2`）。不强制客户端升级。
 
-**客户端热更新文件** 放在公开仓 [facefusion-releases](https://github.com/e12games/facefusion-releases.git)，VPS 从 `/opt/lianhuan/releases` 读取。
+**客户端热更新文件** 放在公开仓 [facefusion-releases](https://github.com/e12games/facefusion-releases.git)。
+
+客户端下载地址：`https://raw.githubusercontent.com/e12games/facefusion-releases/main/files/…`（不走本站域名）。
 
 ---
 

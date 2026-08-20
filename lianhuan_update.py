@@ -23,6 +23,9 @@ from lianhuan_client import (
 	version_gt
 )
 
+# 公开仓默认下载根（与 LIANHUAN_RELEASES_RAW_BASE 一致）
+RELEASES_RAW_BASE = 'https://raw.githubusercontent.com/e12games/facefusion-releases/main'
+
 
 def sha256_file(path : Path) -> str:
 	digest = hashlib.sha256()
@@ -135,7 +138,9 @@ def apply_manifest(manifest : dict, app_path : Path, work_dir : Path) -> None:
 			relative = relative.replace('\\', '/').lstrip('/')
 			expected_hash = str(item.get('sha256') or '').lower()
 			expected_size = int(item.get('size') or 0)
-			url = str(item.get('url') or f'{base}/releases/files/{relative}')
+			url = str(item.get('url') or '').strip()
+			if not url:
+				url = f'{RELEASES_RAW_BASE}/files/{relative}'
 			pending = pending_root / relative.replace('/', '\\')
 			download_file(url, pending)
 			actual_hash = sha256_file(pending)
