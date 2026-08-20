@@ -1,6 +1,12 @@
 #!/bin/bash
-# 脸幻 WEB 一键安装（Ubuntu + 宝塔/Nginx）
-# 用法：curl -fsSL https://raw.githubusercontent.com/e12games/facefusion/main/deploy/vps-install.sh | bash
+# 脸幻 WEB 一键安装 / 修复（Ubuntu + 宝塔/Nginx）
+#
+# 用法 1（已 clone 到 /opt/lianhuan/app）：
+#   bash /opt/lianhuan/app/deploy/vps-install.sh
+#
+# 用法 2（从零开始）：
+#   curl -fsSL https://raw.githubusercontent.com/e12games/facefusion/main/deploy/vps-install.sh | bash
+#
 set -euo pipefail
 
 REPO="${LIANHUAN_REPO:-https://github.com/e12games/facefusion.git}"
@@ -11,18 +17,27 @@ WEB="$APP/web"
 VENV="$ROOT/venv"
 ENV_FILE="/etc/lianhuan.env"
 PORT="${LIANHUAN_PORT:-8092}"
+SERVICE="lianhuan-web"
 
-echo "==> 安装系统依赖"
+log() { echo "==> $*"; }
+die() { echo "错误: $*" >&2; exit 1; }
+
+if [[ "$(id -u)" -ne 0 ]]; then
+	die "请用 root 运行： sudo bash $0"
+fi
+
+log "安装系统依赖"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 apt-get install -y -qq git curl ca-certificates python3 python3-venv python3-pip
 
-if ! command -v python3 >/dev/null; then
-	echo "未找到 python3"
-	exit 1
-fi
+command -v python3 >/dev/null || die "未找到 python3"
+python3 --version
 
-echo "==> 拉取源码"
+log "配置 Git（避免 dubious ownership）"
+git config --global --add safe.directory "$APP" 2>/dev/null || true
+
+log "拉取 / 更新源码"
 mkdir -p "$ROOT"
 if [[ -d "$APP/.git" ]]; then
 	git -C "$APP" fetch origin "$BRANCH"
@@ -31,12 +46,9 @@ else
 	git clone --depth 1 -b "$BRANCH" "$REPO" "$APP"
 fi
 
-if [[ ! -f "$WEB/app.py" ]]; then
-	echo "缺少 $WEB/app.py，请检查仓库是否完整"
-	exit 1
-fi
+[[ -f "$WEB/app.py" ]] || die "缺少 $WEB/app.py"
 
-echo "==> 写入启动脚本与 systemd"
+log "写入启动脚本"
 mkdir -p "$APP/deploy"
 cat > "$APP/deploy/start.sh" << 'EOF'
 #!/bin/bash
@@ -46,7 +58,8 @@ exec /opt/lianhuan/venv/bin/uvicorn app:app --host 127.0.0.1 --port "$PORT"
 EOF
 chmod +x "$APP/deploy/start.sh"
 
-cat > /etc/systemd/system/lianhuan-web.service << EOF
+log "写入 systemd：$SERVICE"
+cat > "/etc/systemd/system/${SERVICE}.service" << EOF
 [Unit]
 Description=LianHuan Web
 After=network.target
@@ -54,6 +67,7 @@ After=network.target
 [Service]
 Type=simple
 User=www-data
+Group=www-data
 WorkingDirectory=$WEB
 EnvironmentFile=$ENV_FILE
 ExecStart=$APP/deploy/start.sh
@@ -73,39 +87,55 @@ LIANHUAN_ADMIN_PASSWORD=admin123
 LIANHUAN_PORT=$PORT
 EOF
 	chmod 600 "$ENV_FILE"
-	echo "==> 已创建 $ENV_FILE（默认密码 admin123，请尽快修改）"
+	log "已创建 $ENV_FILE（默认 admin@local.test / admin123，请尽快修改）"
+else
+	if ! grep -q '^LIANHUAN_PORT=' "$ENV_FILE"; then
+		echo "LIANHUAN_PORT=$PORT" >> "$ENV_FILE"
+	fi
+	log "使用已有 $ENV_FILE"
 fi
 
-echo "==> Python 虚拟环境"
-if [[ ! -x "$VENV/bin/python" ]]; then
+# shellcheck disable=SC1090
+source "$ENV_FILE" 2>/dev/null || true
+PORT="${LIANHUAN_PORT:-8092}"
+
+log "创建 Python 虚拟环境"
+if [[ ! -x "$VENV/bin/pip" ]]; then
+	rm -rf "$VENV"
 	python3 -m venv "$VENV"
 fi
 "$VENV/bin/pip" install -U pip -q
 "$VENV/bin/pip" install -r "$WEB/requirements.txt" -q
 
+log "目录权限"
 mkdir -p "$WEB/data" "$WEB/releases/files"
 chown -R www-data:www-data "$ROOT"
+chmod 755 "$ROOT" "$APP" "$WEB"
 
-echo "==> 启动服务"
+log "启动服务"
 systemctl daemon-reload
-systemctl enable lianhuan-web
-systemctl restart lianhuan-web
+systemctl enable "$SERVICE"
+systemctl restart "$SERVICE"
 sleep 2
 
-if curl -fsS "http://127.0.0.1:$PORT/api/version" >/dev/null; then
-	echo "==> 成功：http://127.0.0.1:$PORT/api/version"
+if curl -fsS "http://127.0.0.1:${PORT}/api/version"; then
+	echo ""
 else
-	echo "==> 启动可能失败，请执行： journalctl -u lianhuan-web -n 50 --no-pager"
-	exit 1
+	echo ""
+	log "启动失败，最近日志："
+	journalctl -u "$SERVICE" -n 40 --no-pager || true
+	die "请根据上方日志排查"
 fi
 
 cat << EOF
 
 ========================================
-脸幻 WEB 已安装
-本机端口：127.0.0.1:$PORT
-环境配置：$ENV_FILE
-宝塔：添加站点 facefusion.iqiyia.cyou → SSL → 反向代理 http://127.0.0.1:$PORT
-改密码后：systemctl restart lianhuan-web
+脸幻 WEB 安装完成
+本机：http://127.0.0.1:${PORT}
+API： http://127.0.0.1:${PORT}/api/version
+配置：$ENV_FILE
+域名：facefusion.iqiyia.cyou
+宝塔：站点 → SSL → 反向代理 http://127.0.0.1:${PORT}
+改密：nano $ENV_FILE && systemctl restart $SERVICE
 ========================================
 EOF
