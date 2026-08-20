@@ -17,7 +17,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from starlette.middleware.sessions import SessionMiddleware
 
 from update_service import default_version, load_manifest, manifest_for_client, save_manifest, version_payload
-from payment_service import normalize_tx_hash, verify_trc20_usdt
+from payment_service import normalize_tx_hash, verify_trc20_usdt, wallet_qr_svg, SUPPORT_TELEGRAM
 
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / 'data'
@@ -276,10 +276,12 @@ def buy_page(request : Request):
 		]
 	return render(request, 'buy.html', {
 		'wallet': wallet,
+		'wallet_qr': wallet_qr_svg(wallet),
 		'price': price,
 		'orders': orders,
 		'error': '',
-		'message': ''
+		'message': '',
+		'support_telegram': SUPPORT_TELEGRAM
 	})
 
 
@@ -332,10 +334,12 @@ def buy_submit(request : Request, tx_hash : str = Form(...)):
 		]
 	return render(request, 'buy.html', {
 		'wallet': wallet,
+		'wallet_qr': wallet_qr_svg(wallet),
 		'price': price,
 		'orders': orders,
 		'error': error,
-		'message': message
+		'message': message,
+		'support_telegram': SUPPORT_TELEGRAM
 	})
 
 

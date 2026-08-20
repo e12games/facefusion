@@ -7,11 +7,16 @@ import json
 import sys
 import urllib.error
 import urllib.request
+import webbrowser
 from pathlib import Path
 import tkinter as tk
 from tkinter import ttk
 
 from lianhuan_client import TIMEOUT, api_base, http_request
+
+
+def register_url() -> str:
+	return api_base().rstrip('/') + '/register'
 
 
 def post_json(path : str, payload : dict | None = None) -> tuple[int, dict]:
@@ -48,7 +53,7 @@ class LoginApp:
 		self.root = tk.Tk()
 		self.root.title('脸幻')
 		self.root.resizable(False, False)
-		self.root.geometry('420x360')
+		self.root.geometry('420x390')
 		pad = ttk.Frame(self.root, padding = 20)
 		pad.pack(fill = 'both', expand = True)
 
@@ -59,7 +64,18 @@ class LoginApp:
 		self.trial_btn.pack(fill = 'x', ipady = 8)
 
 		ttk.Separator(pad).pack(fill = 'x', pady = 16)
-		ttk.Label(pad, text = '已有账号（网站注册的邮箱）').pack(anchor = 'w')
+		account_row = ttk.Frame(pad)
+		account_row.pack(fill = 'x')
+		ttk.Label(account_row, text = '已有账号（网站注册的邮箱）').pack(side = 'left')
+		register_link = tk.Label(
+			account_row,
+			text = '去网站注册',
+			fg = '#4da3ff',
+			cursor = 'hand2',
+			font = ('Microsoft YaHei UI', 9)
+		)
+		register_link.pack(side = 'right')
+		register_link.bind('<Button-1>', lambda _ : self.open_register())
 		self.email = ttk.Entry(pad)
 		self.email.pack(fill = 'x', pady = 4)
 		self.password = ttk.Entry(pad, show = '*')
@@ -69,6 +85,9 @@ class LoginApp:
 		self.status = ttk.Label(pad, text = '', foreground = '#8a160f', wraplength = 360)
 		self.status.pack(anchor = 'w', pady = (12, 0))
 		self.root.bind('<Return>', lambda _ : self.login())
+
+	def open_register(self) -> None:
+		webbrowser.open(register_url())
 
 	def set_status(self, text : str) -> None:
 		self.status.config(text = text)

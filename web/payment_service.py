@@ -12,6 +12,7 @@ from typing import Any, Optional
 
 USDT_TRC20_CONTRACT = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t'
 TX_HASH_RE = re.compile(r'^[0-9a-fA-F]{64}$')
+SUPPORT_TELEGRAM = 'https://t.me/usdtsoft306'
 
 
 def trongrid_headers() -> dict[str, str]:
@@ -89,3 +90,14 @@ def verify_trc20_usdt(tx_hash : str, wallet : str, min_amount : Decimal) -> tupl
 		if amount + Decimal('0.000001') >= min_amount:
 			return True, '已确认 USDT 到账。'
 	return False, '未找到符合条件的 USDT 转入（地址、金额或哈希不匹配）。'
+
+
+def wallet_qr_svg(text : str) -> str:
+	wallet = (text or '').strip()
+	if not wallet:
+		return ''
+	try:
+		import segno
+		return segno.make(wallet, error = 'm').svg_data_uri(scale = 5, dark = '#111111', light = '#ffffff', border = 2)
+	except Exception:
+		return ''

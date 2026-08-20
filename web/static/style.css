@@ -152,7 +152,13 @@ input[type="email"]:focus, input[type="password"]:focus {
 .price-box { margin: 20px 0; padding: 16px; border: 1px solid var(--line); background: rgba(255,255,255,0.02); }
 .price { font-size: 32px; margin: 4px 0 0; font-weight: 700; }
 .pay-steps { padding-left: 20px; }
+.wallet-pay { display: flex; gap: 20px; align-items: flex-start; margin: 16px 0; flex-wrap: wrap; }
+.wallet-qr { flex: 0 0 auto; padding: 10px; background: #fff; border-radius: 8px; border: 1px solid var(--line); line-height: 0; }
+.wallet-qr img { display: block; width: 180px; height: 180px; }
+.wallet-text { flex: 1; min-width: 220px; }
 .wallet code { display: block; margin-top: 8px; padding: 10px; word-break: break-all; background: var(--input-bg); border: 1px solid var(--line); font-size: 13px; }
+.support-hint a { color: var(--accent); }
+.support-hint { margin-top: 4px; }
 .mono { font-size: 12px; word-break: break-all; max-width: 160px; }
 
 table { width: 100%; border-collapse: collapse; }
