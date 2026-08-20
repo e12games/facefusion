@@ -3,22 +3,39 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import quote
 
-ROOT = Path(__file__).resolve().parent
-RELEASES_DIR = ROOT / 'releases'
-MANIFEST_PATH = RELEASES_DIR / 'manifest.json'
-FILES_DIR = RELEASES_DIR / 'files'
+WEB_ROOT = Path(__file__).resolve().parent
 VERSION_RE = re.compile(r'^(\d{8})(?:\.(\d+))?$')
 
 BLOCKED_UPDATE_PREFIXES = (
 	'.assets/models/',
 	'runtime/',
 )
+
+
+def releases_dir() -> Path:
+	env = os.environ.get('LIANHUAN_RELEASES_DIR', '').strip()
+	if env:
+		return Path(env)
+	repo_releases = WEB_ROOT.parent / 'releases'
+	if repo_releases.is_dir():
+		return repo_releases
+	legacy = WEB_ROOT / 'releases'
+	return legacy
+
+
+def manifest_path() -> Path:
+	return releases_dir() / 'manifest.json'
+
+
+def files_dir() -> Path:
+	return releases_dir() / 'files'
 
 
 def normalize_update_path(relative : str) -> str:
@@ -57,10 +74,11 @@ def version_gt(left : str, right : str) -> bool:
 
 
 def load_manifest() -> dict[str, Any]:
-	if not MANIFEST_PATH.is_file():
+	path = manifest_path()
+	if not path.is_file():
 		return {'version': default_version(), 'force': False, 'notes': '', 'files': []}
 	try:
-		data = json.loads(MANIFEST_PATH.read_text(encoding = 'utf-8'))
+		data = json.loads(path.read_text(encoding = 'utf-8'))
 	except Exception:
 		data = {}
 	if not isinstance(data, dict):
@@ -73,8 +91,10 @@ def load_manifest() -> dict[str, Any]:
 
 
 def save_manifest(data : dict[str, Any]) -> None:
-	RELEASES_DIR.mkdir(parents = True, exist_ok = True)
-	MANIFEST_PATH.write_text(json.dumps(data, ensure_ascii = False, indent = 2) + '\n', encoding = 'utf-8')
+	root = releases_dir()
+	root.mkdir(parents = True, exist_ok = True)
+	files_dir().mkdir(parents = True, exist_ok = True)
+	manifest_path().write_text(json.dumps(data, ensure_ascii = False, indent = 2) + '\n', encoding = 'utf-8')
 
 
 def manifest_for_client(current : str, base_url : str, update_enabled : bool) -> dict[str, Any]:
@@ -92,13 +112,14 @@ def manifest_for_client(current : str, base_url : str, update_enabled : bool) ->
 	if current and not version_gt(latest, current):
 		return payload
 	files : list[dict[str, Any]] = []
+	fdir = files_dir()
 	for item in manifest.get('files') or []:
 		if not isinstance(item, dict):
 			continue
 		relative = str(item.get('path') or '').replace('\\', '/').lstrip('/')
 		if not relative or not is_allowed_update_path(relative):
 			continue
-		file_path = FILES_DIR / relative.replace('/', '\\')
+		file_path = fdir / relative.replace('/', os.sep)
 		if not file_path.is_file():
 			continue
 		url = base_url.rstrip('/') + '/releases/files/' + quote(relative.replace('\\', '/'), safe = '/')

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""扫描 web/releases/files 生成 manifest.json（路径相对 internal/app）。"""
+"""扫描 releases/files 生成 manifest.json（路径相对 internal/app）。"""
 from __future__ import annotations
 
 import hashlib
@@ -8,8 +8,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-FILES_DIR = ROOT / 'web' / 'releases' / 'files'
-MANIFEST_PATH = ROOT / 'web' / 'releases' / 'manifest.json'
+FILES_DIR = ROOT / 'releases' / 'files'
+MANIFEST_PATH = ROOT / 'releases' / 'manifest.json'
 
 BLOCKED_UPDATE_PREFIXES = (
 	'.assets/models/',
@@ -77,10 +77,12 @@ def main() -> int:
 	notes = sys.argv[2] if len(sys.argv) > 2 else ''
 	if not version:
 		print('用法: python scripts/build_release_manifest.py 20260820 "更新说明"')
+		print('文件目录: releases/files/  →  推送到 facefusion-releases 公开仓')
 		return 1
 	payload = build(version, notes)
 	print(json.dumps(payload, ensure_ascii = False, indent = 2))
 	print(f'已写入 {MANIFEST_PATH}')
+	print('下一步: bash scripts/publish_releases_repo.sh')
 	return 0
 
 

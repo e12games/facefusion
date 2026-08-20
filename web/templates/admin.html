@@ -73,6 +73,26 @@
 		</tbody>
 	</table>
 
+	<h2>客户端发布包（公开仓）</h2>
+	<p class="hint">
+		仓库：<a href="{{ releases_git.repo }}" target="_blank" rel="noopener">{{ releases_git.repo }}</a><br>
+		目录：<code>{{ releases_root }}</code>
+		{% if releases_git.cloned %}
+		· 当前 <strong>{{ releases_git.local_commit }}</strong>
+		· 远程 <strong>{{ releases_git.remote_commit }}</strong>
+		{% if releases_git.update_available %} · <strong>有新发布</strong>{% endif %}
+		{% else %}
+		· 尚未 clone
+		{% endif %}
+	</p>
+	<form method="post" action="/admin/releases/check" style="display:inline">
+		<button class="btn" type="submit">检查发布包</button>
+	</form>
+	<form method="post" action="/admin/releases/pull" style="display:inline;margin-left:8px">
+		<button class="btn" type="submit">拉取发布包</button>
+	</form>
+	<p class="hint">公开仓无需 Token。发版：改 <code>releases/files/</code> → build manifest → push 到 facefusion-releases → 此处拉取。</p>
+
 	<h2>客户端热更新</h2>
 	<p class="hint">版本号格式 YYYYMMDD，同日再发用 20260820.2。不强制升级；客户端可跳过。</p>
 	<form class="switch" method="post" action="/admin/release">
@@ -91,7 +111,7 @@
 			<span>同时写 manifest.json 版本号</span>
 		</label>
 		<p class="hint">manifest：{{ manifest_version }} · {{ manifest_files }} 个文件 · 登录窗另有「检查更新」按钮</p>
-		<p class="hint">上传目录 <code>web/releases/files/</code>（路径对应 <code>internal/app/</code>）</p>
+		<p class="hint">文件放 <code>releases/files/</code>（对应 <code>internal/app/</code>），推送到公开仓 facefusion-releases</p>
 		<button class="btn" type="submit">保存发版</button>
 	</form>
 

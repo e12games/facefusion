@@ -30,7 +30,7 @@ cd "$APP"
 "$GIT" _fetch "$BRANCH"
 "$GIT" pull --ff-only origin "$BRANCH"
 "$VENV/bin/pip" install -r "$WEB/requirements.txt" -q
-chown -R www-data:www-data "$WEB/data" "$WEB/releases" 2>/dev/null || true
+chown -R www-data:www-data "$WEB/data" "${LIANHUAN_RELEASES_DIR:-/opt/lianhuan/releases}" 2>/dev/null || true
 echo "pull ok, scheduling service restart"
 nohup bash -c "sleep 2; systemctl restart ${SERVICE}" >/dev/null 2>&1 &
 echo "=== web-self-update done ==="

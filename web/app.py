@@ -16,14 +16,14 @@ from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from starlette.middleware.sessions import SessionMiddleware
 
-from update_service import default_version, load_manifest, manifest_for_client, save_manifest, version_payload
+from update_service import default_version, load_manifest, manifest_for_client, releases_dir, save_manifest, version_payload
 from payment_service import normalize_tx_hash, verify_trc20_usdt, wallet_qr_svg, SUPPORT_TELEGRAM
 from web_deploy_service import apply_web_update, check_web_update, git_status, read_log_tail
+from releases_deploy_service import check_releases, pull_releases, releases_status
 
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / 'data'
 DB_PATH = DATA_DIR / 'lianhuan.db'
-RELEASES_DIR = ROOT / 'releases'
 SECRET = os.environ.get('LIANHUAN_SECRET', 'lianhuan-dev-secret-change-me')
 ADMIN_EMAIL = os.environ.get('LIANHUAN_ADMIN_EMAIL', 'admin@lianhuan.local').strip().lower()
 ADMIN_PASSWORD = os.environ.get('LIANHUAN_ADMIN_PASSWORD', 'admin123')
@@ -34,8 +34,9 @@ DEFAULT_ADMIN_PASSWORD = 'admin123'
 app = FastAPI(title = '脸幻')
 app.add_middleware(SessionMiddleware, secret_key = SECRET, session_cookie = 'lianhuan_session')
 app.mount('/static', StaticFiles(directory = str(ROOT / 'static')), name = 'static')
-if RELEASES_DIR.is_dir():
-	app.mount('/releases', StaticFiles(directory = str(RELEASES_DIR)), name = 'releases')
+_releases = releases_dir()
+if _releases.is_dir():
+	app.mount('/releases', StaticFiles(directory = str(_releases)), name = 'releases')
 jinja_env = Environment(
 	loader = FileSystemLoader(str(ROOT / 'templates')),
 	autoescape = select_autoescape(['html', 'xml'])
@@ -453,6 +454,7 @@ def admin_page(request : Request):
 		]
 	flash = str(request.session.pop('admin_flash', '') or '')
 	web_git = git_status(fetch = True)
+	releases_git = releases_status(fetch = True)
 	return render(request, 'admin.html', {
 		'users': users,
 		'message': flash,
@@ -470,8 +472,30 @@ def admin_page(request : Request):
 		'membership_price_usdt': setting('membership_price_usdt', '20'),
 		'orders': pending_orders,
 		'web_git': web_git,
-		'web_update_log': read_log_tail()
+		'web_update_log': read_log_tail(),
+		'releases_git': releases_git,
+		'releases_root': str(releases_dir())
 	})
+
+
+@app.post('/admin/releases/check')
+def admin_releases_check(request : Request):
+	user = current_user(request)
+	if not user or not user['is_admin']:
+		return RedirectResponse('/login', status_code = 303)
+	result = check_releases()
+	request.session['admin_flash'] = result.get('message') or result.get('reason') or '检查完成。'
+	return RedirectResponse('/admin', status_code = 303)
+
+
+@app.post('/admin/releases/pull')
+def admin_releases_pull(request : Request):
+	user = current_user(request)
+	if not user or not user['is_admin']:
+		return RedirectResponse('/login', status_code = 303)
+	result = pull_releases()
+	request.session['admin_flash'] = result.get('message') or result.get('reason') or '已拉取。'
+	return RedirectResponse('/admin', status_code = 303)
 
 
 @app.post('/admin/web-update/check')

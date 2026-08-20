@@ -111,6 +111,23 @@ fi
 # shellcheck disable=SC1090
 source "$ENV_FILE" 2>/dev/null || true
 PORT="${LIANHUAN_PORT:-8092}"
+RELEASES="${LIANHUAN_RELEASES_DIR:-/opt/lianhuan/releases}"
+RELEASES_REPO="${LIANHUAN_RELEASES_REPO:-https://github.com/e12games/facefusion-releases.git}"
+
+log "客户端发布包（公开仓 facefusion-releases）"
+git config --global --add safe.directory "$RELEASES" 2>/dev/null || true
+if [[ -d "$RELEASES/.git" ]]; then
+	git -C "$RELEASES" pull --ff-only origin main 2>/dev/null || git -C "$RELEASES" pull --ff-only
+else
+	git clone "$RELEASES_REPO" "$RELEASES"
+fi
+
+if ! grep -q '^LIANHUAN_RELEASES_DIR=' "$ENV_FILE" 2>/dev/null; then
+	echo "LIANHUAN_RELEASES_DIR=$RELEASES" >> "$ENV_FILE"
+fi
+if ! grep -q '^LIANHUAN_RELEASES_REPO=' "$ENV_FILE" 2>/dev/null; then
+	echo "LIANHUAN_RELEASES_REPO=$RELEASES_REPO" >> "$ENV_FILE"
+fi
 
 log "创建 Python 虚拟环境"
 if [[ ! -x "$VENV/bin/pip" ]]; then
@@ -121,8 +138,8 @@ fi
 "$VENV/bin/pip" install -r "$WEB/requirements.txt" -q
 
 log "目录权限"
-mkdir -p "$WEB/data" "$WEB/releases/files"
-chown -R www-data:www-data "$WEB/data" "$WEB/releases"
+mkdir -p "$WEB/data"
+chown -R www-data:www-data "$WEB/data" "$RELEASES"
 chmod 755 "$ROOT" "$APP" "$WEB"
 chmod 644 "$ENV_FILE"
 chmod 600 "$ENV_FILE"
